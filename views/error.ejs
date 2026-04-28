@@ -1,0 +1,10 @@
+<% locals.needsMap = false; %>
+<%- include('partials/header') %>
+
+<section class="error-page">
+  <h1>Fehler <%= typeof code !== 'undefined' ? code : '' %></h1>
+  <p><%= typeof message !== 'undefined' ? message : 'Ein unbekannter Fehler ist aufgetreten.' %></p>
+  <a href="/" class="btn btn-primary">Zurück zur Startseite</a>
+</section>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,46 @@
+<% locals.needsMap = false; %>
+<%- include('partials/header') %>
+
+<!-- Hero-Bereich -->
+<section class="hero">
+  <% if (settings.header_image) { %>
+    <div class="hero-image">
+      <img src="/uploads/<%= settings.header_image %>" alt="Header-Bild">
+    </div>
+  <% } %>
+  <h1><%= settings.site_title || 'Hofflohmärkte' %></h1>
+  <p class="subtitle"><%= settings.site_subtitle || '' %></p>
+</section>
+
+<!-- Marktliste -->
+<section class="market-list">
+  <h2>Aktuelle Hofflohmärkte</h2>
+
+  <% if (markets.length === 0) { %>
+    <p class="empty-state">Aktuell sind keine Hofflohmärkte geplant. Schauen Sie bald wieder vorbei!</p>
+  <% } else { %>
+    <div class="market-grid">
+      <% markets.forEach(market => { %>
+        <div class="market-card">
+          <h3><%= market.name %></h3>
+          <div class="market-meta">
+            <p class="market-date">
+              <strong>Von:</strong> <%= market.startFormatted %><br>
+              <strong>Bis:</strong> <%= market.endFormatted %>
+            </p>
+            <% if (market.categoriesParsed.length > 0) { %>
+              <div class="market-categories">
+                <% market.categoriesParsed.forEach(cat => { %>
+                  <span class="category-tag"><%= cat %></span>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+          <a href="/markt/<%= market.id %>" class="btn btn-primary">Zum Hofflohmarkt &rarr;</a>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,21 @@
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <p>&copy; <%= new Date().getFullYear() %> <%= settings.site_title || 'Hofflohmärkte' %></p>
+      <nav class="footer-links">
+        <a href="/impressum">Impressum</a>
+        <a href="/datenschutz">Datenschutz</a>
+        <a href="/admin/login">Admin</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Leaflet JS (nur wenn Karte benötigt wird) -->
+  <% if (locals.needsMap) { %>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <% } %>
+</body>
+</html>

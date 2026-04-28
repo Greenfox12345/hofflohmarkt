@@ -1,0 +1,59 @@
+<% locals.needsMap = false; %>
+<%- include('../partials/header') %>
+
+<section class="admin-section">
+  <div class="section-header">
+    <h1>Stände &ndash; <%= market.name %></h1>
+    <a href="/admin/markets" class="btn btn-secondary">&larr; Zurück zur Marktübersicht</a>
+  </div>
+
+  <% if (stands.length === 0) { %>
+    <p class="empty-state">Für diesen Markt sind noch keine Stände angemeldet.</p>
+  <% } else { %>
+    <p><strong><%= stands.length %></strong> Stand/Stände angemeldet.</p>
+
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Adresse</th>
+            <th>Name</th>
+            <th>Wegbeschreibung</th>
+            <th>Kategorien</th>
+            <th>Angemeldet am</th>
+            <th>Aktion</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% stands.forEach(stand => { %>
+            <tr>
+              <td><%= stand.id %></td>
+              <td><%= stand.address %></td>
+              <td><%= stand.name || '&ndash;' %></td>
+              <td><%= stand.directions || '&ndash;' %></td>
+              <td>
+                <% if (stand.categoriesParsed.length > 0) { %>
+                  <% stand.categoriesParsed.forEach(cat => { %>
+                    <span class="category-tag small"><%= cat %></span>
+                  <% }) %>
+                <% } else { %>
+                  &ndash;
+                <% } %>
+              </td>
+              <td><small><%= stand.createdFormatted %></small></td>
+              <td>
+                <form action="/admin/markets/<%= market.id %>/stands/<%= stand.id %>/delete" method="POST"
+                      onsubmit="return confirm('Stand wirklich löschen?');">
+                  <button type="submit" class="btn btn-small btn-danger">Löschen</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

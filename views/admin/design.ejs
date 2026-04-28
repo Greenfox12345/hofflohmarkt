@@ -1,0 +1,109 @@
+<% locals.needsMap = false; %>
+<%- include('../partials/header') %>
+
+<section class="admin-section">
+  <h1>Design-Einstellungen</h1>
+
+  <form action="/admin/design" method="POST" enctype="multipart/form-data" class="admin-form">
+
+    <div class="form-row">
+      <div class="form-group flex-1">
+        <label for="site_title">Website-Titel</label>
+        <input type="text" id="site_title" name="site_title"
+               value="<%= settings.site_title || '' %>">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group flex-1">
+        <label for="site_subtitle">Untertitel</label>
+        <input type="text" id="site_subtitle" name="site_subtitle"
+               value="<%= settings.site_subtitle || '' %>">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group flex-1">
+        <label for="bg_color">Hintergrundfarbe</label>
+        <div class="color-input-group">
+          <input type="color" id="bg_color" name="bg_color"
+                 value="<%= settings.bg_color || '#ffffff' %>">
+          <span class="color-hex"><%= settings.bg_color || '#ffffff' %></span>
+        </div>
+      </div>
+      <div class="form-group flex-1">
+        <label for="text_color">Textfarbe</label>
+        <div class="color-input-group">
+          <input type="color" id="text_color" name="text_color"
+                 value="<%= settings.text_color || '#333333' %>">
+          <span class="color-hex"><%= settings.text_color || '#333333' %></span>
+        </div>
+      </div>
+      <div class="form-group flex-1">
+        <label for="accent_color">Akzentfarbe</label>
+        <div class="color-input-group">
+          <input type="color" id="accent_color" name="accent_color"
+                 value="<%= settings.accent_color || '#007bff' %>">
+          <span class="color-hex"><%= settings.accent_color || '#007bff' %></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group flex-1">
+        <label for="font_family">Schriftfamilie</label>
+        <input type="text" id="font_family" name="font_family"
+               value="<%= settings.font_family || 'Arial, sans-serif' %>"
+               placeholder="z. B. Roboto, sans-serif">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="header_image">Header-Bild (PNG, JPG; max. 5 MB)</label>
+      <% if (settings.header_image) { %>
+        <div class="current-image">
+          <img src="/uploads/<%= settings.header_image %>" alt="Aktuelles Header-Bild" style="max-width: 300px; max-height: 150px;">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remove_header_image" value="yes">
+            Bild entfernen
+          </label>
+        </div>
+      <% } %>
+      <input type="file" id="header_image" name="header_image" accept=".png,.jpg,.jpeg">
+    </div>
+
+    <h2>Rechtliche Seiten</h2>
+    <p class="form-hint">Die Inhalte werden auf den Seiten <a href="/impressum" target="_blank">/impressum</a> und <a href="/datenschutz" target="_blank">/datenschutz</a> angezeigt. HTML ist erlaubt (z.&nbsp;B. <code>&lt;p&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;a href="..."&gt;</code>).</p>
+
+    <div class="form-group">
+      <label for="impressum_html">Impressum (Inhalt)</label>
+      <textarea id="impressum_html" name="impressum_html" rows="12"
+                placeholder="&lt;p&gt;&lt;strong&gt;Angaben gemäß &sect; 5 TMG&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Max Mustermann&lt;br&gt;Musterstraße 1&lt;br&gt;12345 Musterstadt&lt;/p&gt;
+&lt;p&gt;E-Mail: kontakt@beispiel.de&lt;/p&gt;"><%= settings.impressum_html || '' %></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="datenschutz_html">Datenschutzerklärung (Inhalt)</label>
+      <textarea id="datenschutz_html" name="datenschutz_html" rows="16"
+                placeholder="&lt;p&gt;&lt;strong&gt;Verantwortliche Stelle&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Max Mustermann, Musterstraße 1, 12345 Musterstadt&lt;/p&gt;
+..."><%= settings.datenschutz_html || '' %></textarea>
+      <small>Tipp: Verwenden Sie einfache HTML-Tags für Absätze und Überschriften.</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Einstellungen speichern</button>
+  </form>
+</section>
+
+<!-- Farbwert-Anzeige aktualisieren -->
+<script>
+  document.querySelectorAll('input[type="color"]').forEach(input => {
+    const hexSpan = input.parentElement.querySelector('.color-hex');
+    if (hexSpan) {
+      input.addEventListener('input', () => { hexSpan.textContent = input.value; });
+    }
+  });
+</script>
+
+<%- include('../partials/footer') %>

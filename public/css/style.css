@@ -1,0 +1,915 @@
+/**
+ * style.css – Hauptstylesheet für die Hofflohmarkt-Anwendung
+ *
+ * Verwendet CSS-Variablen aus den Design-Einstellungen (--bg-color, --text-color, etc.)
+ * Responsives Layout mit Flexbox und Grid.
+ */
+
+/* ============================================
+   Reset & Grundlagen
+   ============================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-family, Arial, sans-serif);
+  background-color: var(--bg-color, #ffffff);
+  color: var(--text-color, #333333);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--accent-color, #007bff);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================
+   Navigationsleiste
+   ============================================ */
+
+.navbar {
+  background-color: var(--accent-color, #007bff);
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nav-brand {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.nav-brand:hover {
+  text-decoration: none;
+  opacity: 0.9;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.nav-links a {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.nav-links a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* ============================================
+   Hauptinhalt
+   ============================================ */
+
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  flex: 1;
+  width: 100%;
+}
+
+/* ============================================
+   Flash-Nachrichten (Erfolg/Fehler)
+   ============================================ */
+
+.alert {
+  max-width: 1200px;
+  margin: 1rem auto 0;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.alert-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* ============================================
+   Hero-Bereich (Startseite)
+   ============================================ */
+
+.hero {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.hero-image {
+  margin-bottom: 1.5rem;
+}
+
+.hero-image img {
+  max-height: 300px;
+  border-radius: 8px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.hero h1 {
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-color, #333333);
+}
+
+.hero .subtitle {
+  font-size: 1.15rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+/* ============================================
+   Marktliste (Startseite)
+   ============================================ */
+
+.market-list {
+  padding: 1rem 0;
+}
+
+.market-list h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.market-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s;
+}
+
+.market-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.market-card h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1.2rem;
+}
+
+.market-meta {
+  margin-bottom: 1rem;
+}
+
+.market-date {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+.market-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.category-tag {
+  display: inline-block;
+  background-color: var(--accent-color, #007bff);
+  color: #ffffff;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.category-tag.small {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+}
+
+.empty-state {
+  color: #888;
+  font-style: italic;
+  padding: 2rem 0;
+  text-align: center;
+}
+
+/* ============================================
+   Markt-Detailseite
+   ============================================ */
+
+.market-detail h1 {
+  margin-bottom: 0.5rem;
+}
+
+.market-time {
+  color: #555;
+  margin-bottom: 1rem;
+}
+
+.detail-map {
+  width: 100%;
+  height: 500px;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  margin: 1rem 0;
+}
+
+.stand-count {
+  margin-bottom: 2rem;
+  font-size: 1rem;
+}
+
+/* ============================================
+   Anmeldeformular
+   ============================================ */
+
+.registration-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.registration-section h2 {
+  margin-bottom: 0.5rem;
+}
+
+.registration-section > p {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.registration-form,
+.admin-form,
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.form-group.flex-1 { flex: 1; min-width: 150px; }
+.form-group.flex-2 { flex: 2; min-width: 200px; }
+
+.form-group label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="datetime-local"],
+.form-group input[type="file"],
+.form-group textarea,
+.form-group select {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  width: 100%;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent-color, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+}
+
+.form-group small {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.color-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.color-input-group input[type="color"] {
+  width: 50px;
+  height: 36px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.color-hex {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.current-image {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   Duplikat-Hinweis
+   ============================================ */
+
+.duplicate-notice {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.duplicate-notice h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.duplicate-notice ul {
+  margin: 0.5rem 0 0.5rem 1.5rem;
+}
+
+.duplicate-notice li {
+  margin-bottom: 0.3rem;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.btn {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.btn:hover {
+  opacity: 0.9;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--accent-color, #007bff);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: #ffffff;
+}
+
+.btn-success {
+  background-color: #28a745;
+  color: #ffffff;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: #ffffff;
+}
+
+.btn-small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ============================================
+   Admin-Bereich
+   ============================================ */
+
+.admin-section {
+  max-width: 900px;
+}
+
+.admin-section h1 {
+  margin-bottom: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-header h1 {
+  margin-bottom: 0;
+}
+
+/* Statistik-Karten (Dashboard) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--accent-color, #007bff);
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+/* Admin-Navigations-Karten */
+.admin-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.admin-nav-card {
+  display: block;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.admin-nav-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent-color, #007bff);
+  text-decoration: none;
+}
+
+.admin-nav-card h3 {
+  color: var(--accent-color, #007bff);
+  margin-bottom: 0.5rem;
+}
+
+.admin-nav-card p {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Admin-Tabellen */
+.table-responsive {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+.action-cell {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-inactive {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Admin-Karte (Polygon zeichnen) */
+.admin-map {
+  width: 100%;
+  height: 450px;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  margin: 0.5rem 0;
+}
+
+.polygon-status {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+/* Login-Seite */
+.login-section {
+  max-width: 400px;
+  margin: 3rem auto;
+}
+
+/* ============================================
+   Fehlerseite
+   ============================================ */
+
+.error-page {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.error-page h1 {
+  font-size: 3rem;
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.error-page p {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+/* ============================================
+   Footer
+   ============================================ */
+
+.site-footer {
+  background-color: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  padding: 1rem;
+  margin-top: 2rem;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.footer-container a {
+  color: #888;
+}
+
+/* ============================================
+   Responsive Anpassungen
+   ============================================ */
+
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 1.6rem;
+  }
+
+  .market-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .detail-map {
+    height: 350px;
+  }
+
+  .admin-map {
+    height: 350px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .action-cell {
+    flex-direction: column;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nav-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 1rem 0.75rem;
+  }
+
+  .registration-section {
+    padding: 1rem;
+  }
+
+  .detail-map {
+    height: 280px;
+  }
+}
+
+/* ============================================
+   Markt-Header-Bild (pro Markt)
+   ============================================ */
+
+.market-header-image {
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.market-header-image img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  display: block;
+}
+
+.market-description {
+  color: #555;
+  font-size: 1.05rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+/* ============================================
+   Eigene Kategorien hinzufügen
+   ============================================ */
+
+.custom-category-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.custom-category-row input[type="text"] {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.custom-category-item {
+  background-color: #e8f4fd;
+  border: 1px solid #b8daff;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.btn-remove-category {
+  background: none;
+  border: none;
+  color: #dc3545;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  line-height: 1;
+  font-weight: bold;
+}
+
+.btn-remove-category:hover {
+  color: #a71d2a;
+}
+
+/* ============================================
+   Admin Markt-Formular: Design-Abschnitt
+   ============================================ */
+
+.admin-form h2 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+  font-size: 1.2rem;
+}
+
+.admin-form h2:first-of-type {
+  margin-top: 0;
+}
+
+.form-group input[type="color"] {
+  width: 60px;
+  height: 40px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* ============================================
+   Footer-Links
+   ============================================ */
+
+.footer-links {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.footer-links a {
+  color: #888;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--accent-color, #007bff);
+  text-decoration: underline;
+}
+
+/* ============================================
+   Rechtliche Seiten (Impressum / Datenschutz)
+   ============================================ */
+
+.legal-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.legal-page h1 {
+  margin-bottom: 1.5rem;
+}
+
+.legal-content {
+  line-height: 1.8;
+}
+
+.legal-content h2 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.legal-content p {
+  margin-bottom: 0.75rem;
+}
+
+.legal-content ul,
+.legal-content ol {
+  margin: 0.5rem 0 0.75rem 1.5rem;
+}
+
+.legal-placeholder {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.legal-placeholder ul {
+  margin: 0.5rem 0 0 1.5rem;
+}
+
+.back-link {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* ============================================
+   Admin-Formular Hinweistext
+   ============================================ */
+
+.form-hint {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.form-hint code {
+  background: #f0f0f0;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.85rem;
+}

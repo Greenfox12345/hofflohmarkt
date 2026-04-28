@@ -1,0 +1,58 @@
+<% locals.needsMap = false; %>
+<%- include('../partials/header') %>
+
+<section class="admin-section">
+  <div class="section-header">
+    <h1>Marktverwaltung</h1>
+    <a href="/admin/markets/create" class="btn btn-primary">+ Neuen Markt anlegen</a>
+  </div>
+
+  <% if (markets.length === 0) { %>
+    <p class="empty-state">Noch keine Märkte angelegt.</p>
+  <% } else { %>
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Zeitraum</th>
+            <th>Status</th>
+            <th>Stände</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% markets.forEach(market => { %>
+            <tr>
+              <td><strong><%= market.name %></strong></td>
+              <td>
+                <small><%= market.startFormatted %><br>&ndash; <%= market.endFormatted %></small>
+              </td>
+              <td>
+                <span class="status-badge <%= market.active ? 'status-active' : 'status-inactive' %>">
+                  <%= market.active ? 'Aktiv' : 'Inaktiv' %>
+                </span>
+              </td>
+              <td><%= market.standCount %></td>
+              <td class="action-cell">
+                <a href="/admin/markets/<%= market.id %>/edit" class="btn btn-small btn-secondary">Bearbeiten</a>
+                <a href="/admin/markets/<%= market.id %>/stands" class="btn btn-small btn-secondary">Stände</a>
+                <form action="/admin/markets/<%= market.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-small <%= market.active ? 'btn-warning' : 'btn-success' %>">
+                    <%= market.active ? 'Deaktivieren' : 'Aktivieren' %>
+                  </button>
+                </form>
+                <form action="/admin/markets/<%= market.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Markt und alle zugehörigen Stände wirklich löschen?');">
+                  <button type="submit" class="btn btn-small btn-danger">Löschen</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

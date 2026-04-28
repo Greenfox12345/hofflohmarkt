@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+
+<section class="legal-page">
+  <h1>Datenschutzerklärung</h1>
+
+  <% if (content && content.trim()) { %>
+    <div class="legal-content">
+      <%- content %>
+    </div>
+  <% } else { %>
+    <div class="legal-placeholder">
+      <p>Die Datenschutzerklärung wurde noch nicht eingerichtet.</p>
+      <p>Bitte tragen Sie die Angaben im <a href="/admin/design">Admin-Bereich unter Design-Einstellungen</a> ein.</p>
+      <hr>
+      <p><strong>Hinweis:</strong> Gemäß DSGVO und BDSG sind folgende Informationen erforderlich:</p>
+      <ul>
+        <li>Verantwortliche Stelle und Kontaktdaten</li>
+        <li>Welche personenbezogenen Daten erhoben werden (z. B. Adressen bei Standanmeldungen)</li>
+        <li>Zweck der Datenverarbeitung</li>
+        <li>Rechtsgrundlage der Verarbeitung</li>
+        <li>Speicherdauer und Löschfristen</li>
+        <li>Rechte der betroffenen Personen (Auskunft, Löschung, Widerspruch)</li>
+      </ul>
+    </div>
+  <% } %>
+
+  <p class="back-link"><a href="/">&larr; Zurück zur Startseite</a></p>
+</section>
+
+<%- include('partials/footer') %>

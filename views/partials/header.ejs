@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : 'Hofflohmarkt' %></title>
+
+  <!-- Design-Einstellungen als CSS-Variablen -->
+  <style>
+    :root {
+      --bg-color: <%= settings.bg_color || '#ffffff' %>;
+      --text-color: <%= settings.text_color || '#333333' %>;
+      --accent-color: <%= settings.accent_color || '#007bff' %>;
+      --font-family: <%= settings.font_family || 'Arial, sans-serif' %>;
+    }
+  </style>
+
+  <!-- Eigenes Stylesheet -->
+  <link rel="stylesheet" href="/css/style.css">
+
+  <!-- Leaflet CSS (nur wenn Karte benötigt wird) -->
+  <% if (locals.needsMap) { %>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <% } %>
+</head>
+<body>
+  <!-- Navigationsleiste -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand"><%= settings.site_title || 'Hofflohmärkte' %></a>
+      <div class="nav-links">
+        <a href="/">Startseite</a>
+        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+          <a href="/admin/dashboard">Dashboard</a>
+          <a href="/admin/logout">Abmelden</a>
+        <% } %>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Flash-Nachrichten -->
+  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <div class="alert alert-success"><%= successMessage %></div>
+  <% } %>
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-error"><%= errorMessage %></div>
+  <% } %>
+
+  <main class="main-content">

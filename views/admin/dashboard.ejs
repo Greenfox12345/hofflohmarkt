@@ -1,0 +1,34 @@
+<% locals.needsMap = false; %>
+<%- include('../partials/header') %>
+
+<section class="admin-section">
+  <h1>Admin-Dashboard</h1>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-number"><%= stats.marketCount %></span>
+      <span class="stat-label">Märkte gesamt</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number"><%= stats.activeCount %></span>
+      <span class="stat-label">Aktive Märkte</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number"><%= stats.standCount %></span>
+      <span class="stat-label">Angemeldete Stände</span>
+    </div>
+  </div>
+
+  <div class="admin-nav-grid">
+    <a href="/admin/design" class="admin-nav-card">
+      <h3>Design-Einstellungen</h3>
+      <p>Farben, Schriftart, Header-Bild und Seitentitel anpassen</p>
+    </a>
+    <a href="/admin/markets" class="admin-nav-card">
+      <h3>Marktverwaltung</h3>
+      <p>Hofflohmärkte anlegen, bearbeiten und verwalten</p>
+    </a>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

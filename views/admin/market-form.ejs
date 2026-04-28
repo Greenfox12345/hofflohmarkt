@@ -1,0 +1,164 @@
+<% locals.needsMap = true; %>
+<%- include('../partials/header') %>
+
+<section class="admin-section">
+  <h1><%= isEdit ? 'Markt bearbeiten' : 'Neuen Markt anlegen' %></h1>
+
+  <form action="<%= isEdit ? '/admin/markets/' + market.id + '/edit' : '/admin/markets/create' %>"
+        method="POST" enctype="multipart/form-data" class="admin-form" id="market-form">
+
+    <!-- ============================================ -->
+    <!-- Grunddaten -->
+    <!-- ============================================ -->
+    <h2>Grunddaten</h2>
+
+    <div class="form-group">
+      <label for="name">Name des Hofflohmarktes *</label>
+      <input type="text" id="name" name="name" required
+             value="<%= isEdit ? market.name : '' %>"
+             placeholder="z. B. Hofflohmarkt Südstadt">
+    </div>
+
+    <div class="form-group">
+      <label for="description">Beschreibung (optional)</label>
+      <textarea id="description" name="description" rows="3"
+                placeholder="z. B. Willkommen zum jährlichen Hofflohmarkt in der Südstadt!"><%= isEdit ? (market.description || '') : '' %></textarea>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group flex-1">
+        <label for="start_time">Startzeit *</label>
+        <input type="datetime-local" id="start_time" name="start_time" required
+               value="<%= isEdit ? market.start_time.replace(' ', 'T').substring(0, 16) : '' %>">
+      </div>
+      <div class="form-group flex-1">
+        <label for="end_time">Endzeit *</label>
+        <input type="datetime-local" id="end_time" name="end_time" required
+               value="<%= isEdit ? market.end_time.replace(' ', 'T').substring(0, 16) : '' %>">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="categories">Kategorien (kommagetrennt)</label>
+      <input type="text" id="categories" name="categories"
+             value="<%= isEdit ? market.categoriesString : '' %>"
+             placeholder="z. B. Kleidung, Bücher, Spielzeug, Haushalt">
+      <small>Anwohner können bei der Anmeldung aus diesen Kategorien wählen und eigene ergänzen.</small>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Geltungsbereich (Karte) -->
+    <!-- ============================================ -->
+    <h2>Geltungsbereich</h2>
+
+    <div class="form-group">
+      <p><small>Zeichnen Sie ein Polygon, das den Bereich des Hofflohmarktes definiert. Nur Adressen innerhalb dieses Bereichs können sich anmelden.</small></p>
+      <div id="admin-map" class="admin-map"></div>
+      <input type="hidden" id="polygon" name="polygon"
+             value="<%= isEdit ? market.polygon : '' %>">
+      <p id="polygon-status" class="polygon-status">
+        <% if (isEdit && market.polygon) { %>
+          Polygon geladen. Sie können es bearbeiten oder neu zeichnen.
+        <% } else { %>
+          Bitte zeichnen Sie ein Polygon auf der Karte.
+        <% } %>
+      </p>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Design-Einstellungen für diesen Markt -->
+    <!-- ============================================ -->
+    <h2>Design-Einstellungen</h2>
+    <p><small>Diese Einstellungen gelten nur für die Detailseite dieses Marktes. Leere Felder verwenden die globalen Einstellungen.</small></p>
+
+    <div class="form-row">
+      <div class="form-group flex-1">
+        <label for="bg_color">Hintergrundfarbe</label>
+        <input type="color" id="bg_color" name="bg_color"
+               value="<%= (isEdit && market.bg_color) ? market.bg_color : (settings.bg_color || '#ffffff') %>">
+      </div>
+      <div class="form-group flex-1">
+        <label for="text_color">Textfarbe</label>
+        <input type="color" id="text_color" name="text_color"
+               value="<%= (isEdit && market.text_color) ? market.text_color : (settings.text_color || '#333333') %>">
+      </div>
+      <div class="form-group flex-1">
+        <label for="accent_color">Akzentfarbe</label>
+        <input type="color" id="accent_color" name="accent_color"
+               value="<%= (isEdit && market.accent_color) ? market.accent_color : (settings.accent_color || '#007bff') %>">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="font_family">Schriftart</label>
+      <select id="font_family" name="font_family">
+        <% const currentFont = (isEdit && market.font_family) ? market.font_family : ''; %>
+        <option value="" <%= !currentFont ? 'selected' : '' %>>Standard (global)</option>
+        <option value="Arial, sans-serif" <%= currentFont === 'Arial, sans-serif' ? 'selected' : '' %>>Arial</option>
+        <option value="'Segoe UI', sans-serif" <%= currentFont === "'Segoe UI', sans-serif" ? 'selected' : '' %>>Segoe UI</option>
+        <option value="Georgia, serif" <%= currentFont === 'Georgia, serif' ? 'selected' : '' %>>Georgia</option>
+        <option value="'Courier New', monospace" <%= currentFont === "'Courier New', monospace" ? 'selected' : '' %>>Courier New</option>
+        <option value="Verdana, sans-serif" <%= currentFont === 'Verdana, sans-serif' ? 'selected' : '' %>>Verdana</option>
+        <option value="'Trebuchet MS', sans-serif" <%= currentFont === "'Trebuchet MS', sans-serif" ? 'selected' : '' %>>Trebuchet MS</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="market_header_image">Header-Bild für diesen Markt (PNG, JPG; optional, max. 5 MB)</label>
+      <% if (isEdit && market.header_image) { %>
+        <div class="current-image">
+          <img src="/uploads/<%= market.header_image %>" alt="Aktuelles Header-Bild" style="max-width: 300px; max-height: 150px; border-radius: 8px;">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remove_header_image" value="yes">
+            Header-Bild entfernen
+          </label>
+        </div>
+      <% } %>
+      <input type="file" id="market_header_image" name="market_header_image" accept=".png,.jpg,.jpeg">
+      <small>Wird als Banner auf der Markt-Detailseite angezeigt.</small>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Marker-Icon & Status -->
+    <!-- ============================================ -->
+    <h2>Weitere Einstellungen</h2>
+
+    <div class="form-group">
+      <label for="marker_icon">Marker-Icon für Stände (PNG, JPG; optional, max. 5 MB)</label>
+      <% if (isEdit && market.marker_icon) { %>
+        <div class="current-image">
+          <img src="/uploads/<%= market.marker_icon %>" alt="Aktuelles Marker-Icon" style="max-width: 64px; max-height: 64px;">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remove_marker_icon" value="yes">
+            Icon entfernen
+          </label>
+        </div>
+      <% } %>
+      <input type="file" id="marker_icon" name="marker_icon" accept=".png,.jpg,.jpeg">
+      <small>Wird als Marker auf der Karte für angemeldete Stände verwendet.</small>
+    </div>
+
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input type="checkbox" name="active" <%= (isEdit && market.active) ? 'checked' : '' %>>
+        Markt aktiv (öffentlich sichtbar)
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        <%= isEdit ? 'Änderungen speichern' : 'Markt anlegen' %>
+      </button>
+      <a href="/admin/markets" class="btn btn-secondary">Abbrechen</a>
+    </div>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>
+
+<!-- Daten für die Karte (muss nach Leaflet-Einbindung im Footer stehen) -->
+<script>
+  const isEdit = <%= isEdit ? 'true' : 'false' %>;
+  const existingPolygon = <%= isEdit && market.polygon ? market.polygon : '[]' %>;
+</script>
+<script src="/js/admin-map.js"></script>

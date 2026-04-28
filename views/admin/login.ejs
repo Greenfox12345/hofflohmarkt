@@ -1,0 +1,22 @@
+<% locals.needsMap = false; %>
+<%- include('../partials/header') %>
+
+<section class="admin-section login-section">
+  <h1>Admin-Login</h1>
+
+  <form action="/admin/login" method="POST" class="admin-form login-form">
+    <div class="form-group">
+      <label for="username">Benutzername</label>
+      <input type="text" id="username" name="username" required autofocus>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Passwort</label>
+      <input type="password" id="password" name="password" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Anmelden</button>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

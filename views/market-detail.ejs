@@ -1,0 +1,254 @@
+<% locals.needsMap = true; %>
+<%- include('partials/header') %>
+
+<%
+  // Marktspezifische Design-Einstellungen (mit Fallback auf global)
+  const ms = typeof marketSettings !== 'undefined' ? marketSettings : {};
+%>
+
+<!-- Marktspezifische CSS-Variablen überschreiben -->
+<style>
+  .market-detail {
+    --market-bg: <%= ms.bg_color || 'var(--bg-color)' %>;
+    --market-text: <%= ms.text_color || 'var(--text-color)' %>;
+    --market-accent: <%= ms.accent_color || 'var(--accent-color)' %>;
+    <% if (ms.font_family) { %>
+    font-family: <%= ms.font_family %>;
+    <% } %>
+    color: var(--market-text);
+  }
+  .market-detail .btn-primary {
+    background-color: var(--market-accent);
+  }
+  .market-detail .btn-primary:hover {
+    background-color: var(--market-accent);
+    filter: brightness(0.9);
+  }
+  .market-detail .category-tag {
+    background-color: var(--market-accent);
+  }
+  .market-detail h1, .market-detail h2 {
+    color: var(--market-text);
+  }
+</style>
+
+<section class="market-detail">
+
+  <% if (ms.header_image) { %>
+    <div class="market-header-image">
+      <img src="/uploads/<%= ms.header_image %>" alt="<%= market.name %>">
+    </div>
+  <% } %>
+
+  <h1><%= market.name %></h1>
+
+  <% if (ms.description) { %>
+    <p class="market-description"><%= ms.description %></p>
+  <% } %>
+
+  <p class="market-time">
+    <strong>Zeitraum:</strong> <%= market.startFormatted %> &ndash; <%= market.endFormatted %>
+  </p>
+
+  <% if (market.categoriesParsed.length > 0) { %>
+    <div class="market-categories">
+      <% market.categoriesParsed.forEach(cat => { %>
+        <span class="category-tag"><%= cat %></span>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <!-- Leaflet-Karte -->
+  <div id="map" class="detail-map"></div>
+
+  <p class="stand-count"><strong><%= stands.length %></strong> Stand/Stände angemeldet</p>
+
+  <!-- Anmeldeformular -->
+  <section class="registration-section">
+    <h2>Stand anmelden</h2>
+    <p>Melden Sie Ihren Stand für diesen Hofflohmarkt an. Ihre Adresse muss im markierten Bereich liegen.</p>
+
+    <% if (typeof duplicateStands !== 'undefined' && duplicateStands && duplicateStands.length > 0) { %>
+      <!-- Duplikat-Hinweis -->
+      <div class="duplicate-notice">
+        <h3>Bereits angemeldete Stände an dieser Adresse:</h3>
+        <ul>
+          <% duplicateStands.forEach(s => { %>
+            <li>
+              <strong><%= s.name || '(Kein Name)' %></strong> &ndash;
+              Kategorien: <%= s.categoriesParsed.length > 0 ? s.categoriesParsed.join(', ') : 'keine' %>
+              <% if (s.directions) { %> &ndash; Wegbeschreibung: <%= s.directions %><% } %>
+            </li>
+          <% }) %>
+        </ul>
+        <p>Wenn Sie trotzdem einen weiteren Stand anmelden möchten (z.&nbsp;B. für eine andere Wohnpartei), füllen Sie das Formular aus und bestätigen Sie.</p>
+      </div>
+    <% } %>
+
+    <form action="/markt/<%= market.id %>/anmelden" method="POST" class="registration-form">
+
+      <% /* Formulardaten vorbelegen, falls Duplikat-Rückfrage */ %>
+      <% const fd = (typeof formData !== 'undefined' && formData) ? formData : {}; %>
+
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label for="street">Straße *</label>
+          <input type="text" id="street" name="street" required
+                 value="<%= fd.street || '' %>" placeholder="Musterstraße">
+        </div>
+        <div class="form-group flex-1">
+          <label for="housenumber">Hausnummer *</label>
+          <input type="text" id="housenumber" name="housenumber" required
+                 value="<%= fd.housenumber || '' %>" placeholder="42">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="zip">PLZ *</label>
+          <input type="text" id="zip" name="zip" required
+                 value="<%= fd.zip || '' %>" placeholder="12345">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="standname">Name / Standbezeichnung (optional)</label>
+          <input type="text" id="standname" name="name"
+                 value="<%= fd.name || '' %>" placeholder="z. B. Familie Müller">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="directions">Wegbeschreibung (optional)</label>
+          <textarea id="directions" name="directions" rows="2"
+                    placeholder="z. B. Hinterhof, 2. Eingang links"><%= fd.directions || '' %></textarea>
+        </div>
+      </div>
+
+      <% if (market.categoriesParsed.length > 0) { %>
+        <div class="form-group">
+          <label>Was bieten Sie an?</label>
+          <div class="checkbox-group" id="category-checkboxes">
+            <% market.categoriesParsed.forEach(cat => { %>
+              <label class="checkbox-label">
+                <input type="checkbox" name="categories" value="<%= cat %>"
+                  <%= (fd.categories && fd.categories.includes(cat)) ? 'checked' : '' %>>
+                <%= cat %>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Eigene Kategorie hinzufügen -->
+      <div class="form-group">
+        <label for="custom_category">Eigene Kategorie ergänzen (optional)</label>
+        <div class="custom-category-row">
+          <input type="text" id="custom_category" placeholder="z. B. Vinyl, Pflanzen, Handgemachtes">
+          <button type="button" id="add-category-btn" class="btn btn-secondary btn-small">Hinzufügen</button>
+        </div>
+        <small>Sie können eigene Kategorien hinzufügen, die nicht in der Liste stehen.</small>
+        <div id="custom-categories-list"></div>
+      </div>
+
+      <% if (typeof duplicateStands !== 'undefined' && duplicateStands && duplicateStands.length > 0) { %>
+        <input type="hidden" name="confirm_duplicate" value="yes">
+        <button type="submit" class="btn btn-primary">Trotzdem anmelden (weiterer Stand)</button>
+      <% } else { %>
+        <button type="submit" class="btn btn-primary">Stand anmelden</button>
+      <% } %>
+    </form>
+  </section>
+</section>
+
+<%- include('partials/footer') %>
+
+<!-- Kartendaten als JSON für JavaScript (muss nach Leaflet-Einbindung im Footer stehen) -->
+<script>
+  // Polygon-Koordinaten für Leaflet (Array von [lat, lng])
+  const polygonCoords = <%- JSON.stringify(market.polygonParsed) %>;
+
+  // Stände als Array von Objekten
+  const stands = <%- JSON.stringify(stands.map(s => ({
+    lat: s.latitude,
+    lng: s.longitude,
+    address: s.address,
+    categories: s.categoriesParsed,
+    name: s.name || '',
+    directions: s.directions || ''
+  }))) %>;
+
+  // Marker-Icon (leer = Standard)
+  const markerIconUrl = '<%= market.marker_icon ? "/uploads/" + market.marker_icon : "" %>';
+</script>
+<script src="/js/market-map.js"></script>
+
+<!-- Eigene Kategorien hinzufügen (Client-JS) -->
+<script>
+(function() {
+  const addBtn = document.getElementById('add-category-btn');
+  const input = document.getElementById('custom_category');
+  const list = document.getElementById('custom-categories-list');
+  const checkboxGroup = document.getElementById('category-checkboxes');
+
+  if (!addBtn || !input) return;
+
+  addBtn.addEventListener('click', function() {
+    const value = input.value.trim();
+    if (!value) return;
+
+    // Prüfen ob Kategorie bereits existiert
+    const existing = document.querySelectorAll('input[name="categories"]');
+    for (const cb of existing) {
+      if (cb.value.toLowerCase() === value.toLowerCase()) {
+        cb.checked = true;
+        input.value = '';
+        return;
+      }
+    }
+
+    // Neue Checkbox erstellen
+    const label = document.createElement('label');
+    label.className = 'checkbox-label custom-category-item';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'categories';
+    checkbox.value = value;
+    checkbox.checked = true;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn-remove-category';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Entfernen';
+    removeBtn.addEventListener('click', function() {
+      label.remove();
+    });
+
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(' ' + value + ' '));
+    label.appendChild(removeBtn);
+
+    // In die Checkbox-Gruppe oder in die Custom-Liste einfügen
+    if (checkboxGroup) {
+      checkboxGroup.appendChild(label);
+    } else {
+      list.appendChild(label);
+    }
+
+    input.value = '';
+    input.focus();
+  });
+
+  // Enter-Taste im Input-Feld
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addBtn.click();
+    }
+  });
+})();
+</script>

@@ -1,0 +1,11 @@
+node_modules/
+.env
+uploads/*
+!uploads/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+nohup.out
+test-*.js
+test-*.txt
+railway.json

@@ -1,0 +1,27 @@
+<%- include('partials/header') %>
+
+<section class="legal-page">
+  <h1>Impressum</h1>
+
+  <% if (content && content.trim()) { %>
+    <div class="legal-content">
+      <%- content %>
+    </div>
+  <% } else { %>
+    <div class="legal-placeholder">
+      <p>Das Impressum wurde noch nicht eingerichtet.</p>
+      <p>Bitte tragen Sie die Angaben im <a href="/admin/design">Admin-Bereich unter Design-Einstellungen</a> ein.</p>
+      <hr>
+      <p><strong>Hinweis:</strong> Gemäß § 5 TMG sind Anbieter von Telemedien verpflichtet, folgende Angaben bereitzustellen:</p>
+      <ul>
+        <li>Name und Anschrift</li>
+        <li>Kontaktmöglichkeit (E-Mail-Adresse)</li>
+        <li>Ggf. Handelsregisternummer, USt-IdNr. etc.</li>
+      </ul>
+    </div>
+  <% } %>
+
+  <p class="back-link"><a href="/">&larr; Zurück zur Startseite</a></p>
+</section>
+
+<%- include('partials/footer') %>
