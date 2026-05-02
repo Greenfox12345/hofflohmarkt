@@ -315,13 +315,20 @@ router.post('/markt/:id/anmelden', async (req, res) => {
 /**
  * GET /markt/:id/karte-download
  * Generiert ein PNG-Kartenbild des Markt-Geltungsbereichs serverseitig.
- * - Bounding Box des Polygons + mindestens 2 km Rand
- * - Zoom 17 (Hausnummern sichtbar)
+ * - Bounding Box des Polygons + mindestens 2 km Rand (korrekte Ausdehnung)
+ * - Zoom automatisch berechnet (max. 17, damit Hausnummern sichtbar)
  * - Polygon als blaues Overlay eingezeichnet
+ * - Angemeldete Stände als Marker eingezeichnet (mit marktspezifischem Icon wenn vorhanden)
+ * - Doppelte Auflösung (2800px Breite)
  */
 router.get('/markt/:id/karte-download', async (req, res) => {
+  const path = require('path');
+  const fs   = require('fs');
   try {
-    const market = db.prepare('SELECT id, name, polygon FROM markets WHERE id = ?').get(req.params.id);
+    // Markt + Stände laden
+    const market = db.prepare(
+      'SELECT id, name, polygon, marker_icon FROM markets WHERE id = ?'
+    ).get(req.params.id);
     if (!market || !market.polygon) {
       return res.status(404).send('Markt oder Polygon nicht gefunden.');
     }
@@ -331,15 +338,17 @@ router.get('/markt/:id/karte-download', async (req, res) => {
       return res.status(400).send('Ungültiges Polygon.');
     }
 
-    // Bounding Box berechnen
+    const stands = db.prepare(
+      'SELECT latitude, longitude, name, address FROM stands WHERE market_id = ?'
+    ).all(req.params.id);
+
+    // ── Bounding Box des Polygons ──────────────────────────────────────────
     const lats = polygon.map(p => p[0]);
     const lngs = polygon.map(p => p[1]);
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
     const minLng = Math.min(...lngs);
     const maxLng = Math.max(...lngs);
-
-    // Mittelpunkt für Breitengrad-Korrektur
     const midLat = (minLat + maxLat) / 2;
 
     // 2 km Rand in Grad umrechnen
@@ -353,48 +362,103 @@ router.get('/markt/:id/karte-download', async (req, res) => {
     const paddedMinLng = minLng - padLng;
     const paddedMaxLng = maxLng + padLng;
 
-    // Bildgröße: proportional zur Bounding Box, max. 2000px
-    const aspectRatio = (paddedMaxLng - paddedMinLng) / ((paddedMaxLat - paddedMinLat) * Math.cos(midLat * Math.PI / 180));
-    let imgWidth = 1400;
+    // ── Bildgröße: proportional zur Bounding Box, Basisbreite 2800px ──────
+    // Korrektur: Längengrade werden durch cos(lat) gestaucht
+    const lngSpan = paddedMaxLng - paddedMinLng;
+    const latSpan = paddedMaxLat - paddedMinLat;
+    const aspectRatio = (lngSpan * Math.cos(midLat * Math.PI / 180)) / latSpan;
+    const BASE_WIDTH = 2800;
+    let imgWidth  = BASE_WIDTH;
     let imgHeight = Math.round(imgWidth / aspectRatio);
-    if (imgHeight > 2000) { imgHeight = 2000; imgWidth = Math.round(imgHeight * aspectRatio); }
-    if (imgWidth > 2000) { imgWidth = 2000; imgHeight = Math.round(imgWidth / aspectRatio); }
+    // Sicherheitsgrenzen
+    if (imgHeight > 4000) { imgHeight = 4000; imgWidth = Math.round(imgHeight * aspectRatio); }
+    if (imgWidth  > 4000) { imgWidth  = 4000; imgHeight = Math.round(imgWidth  / aspectRatio); }
+    // Mindestgröße
+    if (imgWidth  < 400)  imgWidth  = 400;
+    if (imgHeight < 400)  imgHeight = 400;
 
-    // Zoom-Level: 17 zeigt Hausnummern in OSM
-    const ZOOM = 17;
+    // ── Zoom-Strategie ────────────────────────────────────────────────────
+    // Polygon-Ausdehnung in km berechnen (Diagonale der Bounding Box)
+    const polyWidthKm  = (maxLng - minLng) * 111 * Math.cos(midLat * Math.PI / 180);
+    const polyHeightKm = (maxLat - minLat) * 111;
+    const polyDiagKm   = Math.sqrt(polyWidthKm * polyWidthKm + polyHeightKm * polyHeightKm);
 
+    // Gesamtfläche inkl. Rand: wenn das Polygon klein ist, erzwingen wir Zoom 17
+    // Faustregel: bei Zoom 17 passt ein Bereich von ca. 0,5 km in 256px
+    // → Gesamtbreite (Polygon + 2×Rand) in km bestimmt den Mindest-Zoom
+    const totalWidthKm = polyWidthKm + 2 * PAD_KM;
+    // Zoom 17: ~0,6 km sichtbar bei 256px → bei 2800px ~6,6 km
+    // Zoom 16: ~1,2 km bei 256px → ~13 km bei 2800px
+    // Zoom 15: ~2,4 km bei 256px → ~26 km bei 2800px
+    let minZoom;
+    if (totalWidthKm <= 7)  minZoom = 17;
+    else if (totalWidthKm <= 14) minZoom = 16;
+    else if (totalWidthKm <= 28) minZoom = 15;
+    else minZoom = 14;
+
+    // staticmaps-Instanz
     const map = new StaticMaps({
-      width: imgWidth,
+      width:  imgWidth,
       height: imgHeight,
       tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       tileSubdomains: ['a', 'b', 'c'],
       tileSize: 256,
-      tileLayers: [{
-        tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        tileSubdomains: ['a', 'b', 'c']
-      }]
+      zoomRange: { min: minZoom, max: 17 }
     });
 
-    // Polygon als Overlay: [lng, lat] für staticmaps
+    // ── Polygon als Overlay ────────────────────────────────────────────────
+    // staticmaps erwartet [lng, lat]
     const overlayCoords = polygon.map(p => [p[1], p[0]]);
-    overlayCoords.push(overlayCoords[0]); // Polygon schließen
+    overlayCoords.push(overlayCoords[0]); // schließen
     map.addPolygon({
       coords: overlayCoords,
-      color: '#0055cc',
-      fill: 'rgba(0, 85, 204, 0.12)',
-      width: 3
+      color:  '#0055cc',
+      fill:   'rgba(0, 85, 204, 0.15)',
+      width:  4
     });
 
-    // Karte rendern: Mittelpunkt + Zoom
-    const centerLng = (paddedMinLng + paddedMaxLng) / 2;
-    const centerLat = (paddedMinLat + paddedMaxLat) / 2;
-    await map.render([centerLng, centerLat], ZOOM);
+    // ── Stand-Marker ───────────────────────────────────────────────────────
+    // Marker-Icon: marktspezifisches Bild wenn vorhanden, sonst Standard-Pin
+    let markerIconPath = null;
+    if (market.marker_icon) {
+      const candidate = path.join(__dirname, '..', 'uploads', market.marker_icon);
+      if (fs.existsSync(candidate)) markerIconPath = candidate;
+    }
 
-    // Als PNG-Buffer ausgeben
+    for (const stand of stands) {
+      if (!stand.latitude || !stand.longitude) continue;
+      if (markerIconPath) {
+        // Icon-Größe: 32×32px, Ankerpunkt unten-mitte
+        map.addMarker({
+          coord:   [stand.longitude, stand.latitude],
+          img:     markerIconPath,
+          height:  32,
+          width:   32,
+          offsetX: 16,
+          offsetY: 32
+        });
+      } else {
+        // Fallback: roter Kreis-Marker
+        map.addCircle({
+          coord:  [stand.longitude, stand.latitude],
+          radius: 8,
+          fill:   '#cc2200',
+          color:  '#ffffff',
+          width:  2
+        });
+      }
+    }
+
+    // ── Rendern: Bounding Box als center-Array übergeben ──────────────────
+    // staticmaps akzeptiert [minLng, minLat, maxLng, maxLat] als center-Extent
+    await map.render([paddedMinLng, paddedMinLat, paddedMaxLng, paddedMaxLat]);
+
+    // ── Als PNG-Buffer ausgeben ────────────────────────────────────────────
     const buffer = await map.image.buffer('image/png');
 
-    // Dateiname aus Marktname (Sonderzeichen entfernen)
-    const safeName = market.name.replace(/[^a-zA-Z0-9äöüÄÖÜß\-]/g, '_').substring(0, 50);
+    const safeName = market.name
+      .replace(/[^a-zA-Z0-9äöüÄÖÜß\-]/g, '_')
+      .substring(0, 50);
     const filename = `Karte_${safeName}.png`;
 
     res.setHeader('Content-Type', 'image/png');
