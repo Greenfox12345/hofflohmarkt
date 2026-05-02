@@ -60,6 +60,14 @@
 
   <!-- Leaflet-Karte -->
   <div id="map" class="detail-map"></div>
+  <div class="map-actions">
+    <a href="/markt/<%= market.id %>/karte-download"
+       class="btn btn-download-map"
+       download>
+      &#x1F5FA; Karte als Bild herunterladen
+    </a>
+    <span class="map-download-hint">PNG mit Geltungsbereich und Hausnummern</span>
+  </div>
 
   <p class="stand-count"><strong><%= stands.length %></strong> Stand/Stände angemeldet</p>
 

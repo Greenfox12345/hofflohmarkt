@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../database');
+const StaticMaps = require('staticmaps');
 
 // ============================================
 // Hilfsfunktionen
@@ -305,6 +306,105 @@ router.post('/markt/:id/anmelden', async (req, res) => {
 
   req.session.successMessage = `Ihr Stand an der Adresse "${fullAddress}" wurde erfolgreich angemeldet!`;
   res.redirect(`/markt/${marketId}`);
+});
+
+// ============================================
+// Karten-Download
+// ============================================
+
+/**
+ * GET /markt/:id/karte-download
+ * Generiert ein PNG-Kartenbild des Markt-Geltungsbereichs serverseitig.
+ * - Bounding Box des Polygons + mindestens 2 km Rand
+ * - Zoom 17 (Hausnummern sichtbar)
+ * - Polygon als blaues Overlay eingezeichnet
+ */
+router.get('/markt/:id/karte-download', async (req, res) => {
+  try {
+    const market = db.prepare('SELECT id, name, polygon FROM markets WHERE id = ?').get(req.params.id);
+    if (!market || !market.polygon) {
+      return res.status(404).send('Markt oder Polygon nicht gefunden.');
+    }
+
+    const polygon = JSON.parse(market.polygon); // [[lat, lng], ...]
+    if (!Array.isArray(polygon) || polygon.length < 3) {
+      return res.status(400).send('Ungültiges Polygon.');
+    }
+
+    // Bounding Box berechnen
+    const lats = polygon.map(p => p[0]);
+    const lngs = polygon.map(p => p[1]);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    // Mittelpunkt für Breitengrad-Korrektur
+    const midLat = (minLat + maxLat) / 2;
+
+    // 2 km Rand in Grad umrechnen
+    // 1 Grad Breite ≈ 111 km; 1 Grad Länge ≈ 111 km * cos(lat)
+    const PAD_KM = 2.5;
+    const padLat = PAD_KM / 111;
+    const padLng = PAD_KM / (111 * Math.cos(midLat * Math.PI / 180));
+
+    const paddedMinLat = minLat - padLat;
+    const paddedMaxLat = maxLat + padLat;
+    const paddedMinLng = minLng - padLng;
+    const paddedMaxLng = maxLng + padLng;
+
+    // Bildgröße: proportional zur Bounding Box, max. 2000px
+    const aspectRatio = (paddedMaxLng - paddedMinLng) / ((paddedMaxLat - paddedMinLat) * Math.cos(midLat * Math.PI / 180));
+    let imgWidth = 1400;
+    let imgHeight = Math.round(imgWidth / aspectRatio);
+    if (imgHeight > 2000) { imgHeight = 2000; imgWidth = Math.round(imgHeight * aspectRatio); }
+    if (imgWidth > 2000) { imgWidth = 2000; imgHeight = Math.round(imgWidth / aspectRatio); }
+
+    // Zoom-Level: 17 zeigt Hausnummern in OSM
+    const ZOOM = 17;
+
+    const map = new StaticMaps({
+      width: imgWidth,
+      height: imgHeight,
+      tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      tileSubdomains: ['a', 'b', 'c'],
+      tileSize: 256,
+      tileLayers: [{
+        tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        tileSubdomains: ['a', 'b', 'c']
+      }]
+    });
+
+    // Polygon als Overlay: [lng, lat] für staticmaps
+    const overlayCoords = polygon.map(p => [p[1], p[0]]);
+    overlayCoords.push(overlayCoords[0]); // Polygon schließen
+    map.addPolygon({
+      coords: overlayCoords,
+      color: '#0055cc',
+      fill: 'rgba(0, 85, 204, 0.12)',
+      width: 3
+    });
+
+    // Karte rendern: Mittelpunkt + Zoom
+    const centerLng = (paddedMinLng + paddedMaxLng) / 2;
+    const centerLat = (paddedMinLat + paddedMaxLat) / 2;
+    await map.render([centerLng, centerLat], ZOOM);
+
+    // Als PNG-Buffer ausgeben
+    const buffer = await map.image.buffer('image/png');
+
+    // Dateiname aus Marktname (Sonderzeichen entfernen)
+    const safeName = market.name.replace(/[^a-zA-Z0-9äöüÄÖÜß\-]/g, '_').substring(0, 50);
+    const filename = `Karte_${safeName}.png`;
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+
+  } catch (err) {
+    console.error('[Karten-Download] Fehler:', err);
+    res.status(500).send('Fehler beim Generieren der Karte. Bitte versuche es erneut.');
+  }
 });
 
 // ============================================
