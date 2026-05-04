@@ -403,7 +403,7 @@ router.get('/markt/:id/karte-download', async (req, res) => {
       tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       tileSubdomains: ['a', 'b', 'c'],
       tileSize: 256,
-      zoomRange: { min: minZoom, max: 17 }
+      zoomRange: { min: minZoom, max: 16 }
     });
 
     // ── Polygon als Overlay ────────────────────────────────────────────────
@@ -418,24 +418,37 @@ router.get('/markt/:id/karte-download', async (req, res) => {
     });
 
     // ── Stand-Marker ───────────────────────────────────────────────────────
-    // Marker-Icon: marktspezifisches Bild wenn vorhanden, sonst Standard-Pin
-    let markerIconPath = null;
+    // Marker-Icon: marktspezifisches Bild skalieren (sharp) und als tmp-Datei speichern
+    // staticmaps skaliert Icons NICHT automatisch – wir müssen das selbst tun.
+    const sharp = require('sharp');
+    const os    = require('os');
+    const ICON_SIZE = 24; // px bei doppelter Auflösung gut lesbar
+
+    let scaledIconPath = null;
     if (market.marker_icon) {
       const candidate = path.join(__dirname, '..', 'uploads', market.marker_icon);
-      if (fs.existsSync(candidate)) markerIconPath = candidate;
+      if (fs.existsSync(candidate)) {
+        // Auf ICON_SIZE×ICON_SIZE skalieren und als tmp-PNG speichern
+        const tmpIcon = path.join(os.tmpdir(), `marker_scaled_${Date.now()}.png`);
+        await sharp(candidate)
+          .resize(ICON_SIZE, ICON_SIZE, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .png()
+          .toFile(tmpIcon);
+        scaledIconPath = tmpIcon;
+      }
     }
 
     for (const stand of stands) {
       if (!stand.latitude || !stand.longitude) continue;
-      if (markerIconPath) {
-        // Icon-Größe: 32×32px, Ankerpunkt unten-mitte
+      if (scaledIconPath) {
+        // Ankerpunkt: unten-mitte des Icons (Faden/Spitze des Markers)
         map.addMarker({
           coord:   [stand.longitude, stand.latitude],
-          img:     markerIconPath,
-          height:  32,
-          width:   32,
-          offsetX: 16,
-          offsetY: 32
+          img:     scaledIconPath,
+          height:  ICON_SIZE,
+          width:   ICON_SIZE,
+          offsetX: Math.round(ICON_SIZE / 2),
+          offsetY: ICON_SIZE
         });
       } else {
         // Fallback: roter Kreis-Marker
@@ -449,12 +462,18 @@ router.get('/markt/:id/karte-download', async (req, res) => {
       }
     }
 
+    // Temporäre Icon-Datei aufräumen (nach dem Rendern)
+    const cleanupTmpIcon = scaledIconPath ? () => {
+      try { fs.unlinkSync(scaledIconPath); } catch (_) {}
+    } : () => {};
+
     // ── Rendern: Bounding Box als center-Array übergeben ──────────────────
     // staticmaps akzeptiert [minLng, minLat, maxLng, maxLat] als center-Extent
     await map.render([paddedMinLng, paddedMinLat, paddedMaxLng, paddedMaxLat]);
 
     // ── Als PNG-Buffer ausgeben ────────────────────────────────────────────
     const buffer = await map.image.buffer('image/png');
+    cleanupTmpIcon(); // Temporäre Icon-Datei löschen
 
     const safeName = market.name
       .replace(/[^a-zA-Z0-9äöüÄÖÜß\-]/g, '_')
