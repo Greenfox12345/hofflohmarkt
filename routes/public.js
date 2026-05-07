@@ -418,7 +418,11 @@ router.get('/markt/:id/karte-download', async (req, res) => {
 
     let scaledIconPath = null;
     if (market.marker_icon) {
-      const candidate = path.join(__dirname, '..', 'uploads', market.marker_icon);
+      // Upload-Verzeichnis: in Produktion /data/uploads, lokal ./uploads
+      const uploadDir = process.env.NODE_ENV === 'production'
+        ? '/data/uploads'
+        : path.join(__dirname, '..', 'uploads');
+      const candidate = path.join(uploadDir, market.marker_icon);
       if (fs.existsSync(candidate)) {
         // Auf ICON_SIZE×ICON_SIZE skalieren und als tmp-PNG speichern
         const tmpIcon = path.join(os.tmpdir(), `marker_scaled_${Date.now()}.png`);

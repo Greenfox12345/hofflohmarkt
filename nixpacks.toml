@@ -5,6 +5,8 @@ nixPkgs = ["nodejs_20"]
 cmds = ["npm install --production"]
 
 [phases.build]
+# uploads/ für lokale Entwicklung anlegen.
+# In Produktion wird /data/uploads zur Laufzeit automatisch durch admin.js angelegt.
 cmds = ["mkdir -p uploads"]
 
 [start]

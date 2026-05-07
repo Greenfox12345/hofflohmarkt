@@ -15,12 +15,23 @@ const fs = require('fs');
 const { db } = require('../database');
 
 // ============================================
+// Upload-Verzeichnis (persistent auf Railway)
+// ============================================
+// In Produktion liegt /data auf dem Railway Persistent Volume,
+// lokal wird das uploads/-Verzeichnis im Projektordner verwendet.
+const UPLOAD_DIR = process.env.NODE_ENV === 'production'
+  ? '/data/uploads'
+  : path.join(__dirname, '..', 'uploads');
+// Ordner anlegen, falls er noch nicht existiert
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+// ============================================
 // Multer-Konfiguration für Datei-Uploads
 // ============================================
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '..', 'uploads'));
+    cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
     // Eindeutiger Dateiname mit Zeitstempel
@@ -56,7 +67,7 @@ const upload = multer({
  */
 function deleteUpload(filename) {
   if (!filename) return;
-  const filepath = path.join(__dirname, '..', 'uploads', filename);
+  const filepath = path.join(UPLOAD_DIR, filename);
   if (fs.existsSync(filepath)) {
     fs.unlinkSync(filepath);
   }

@@ -35,7 +35,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Uploads-Ordner öffentlich zugänglich machen
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// In Produktion (Railway): /data/uploads (Persistent Volume), lokal: ./uploads
+const UPLOAD_DIR = process.env.NODE_ENV === 'production'
+  ? '/data/uploads'
+  : path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 // Session-Konfiguration
 const isProduction = process.env.NODE_ENV === 'production';
