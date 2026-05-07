@@ -575,11 +575,10 @@ router.get('/markt/:id/stand-bearbeiten/:standId', (req, res) => {
     market: { ...market, categoriesParsed: JSON.parse(market.categories || '[]') },
     stand:  { ...stand,  categoriesParsed: JSON.parse(stand.categories  || '[]') },
     code,
-    successMessage: req.session.successMessage || null,
-    errorMessage:   req.session.errorMessage   || null
+    // res.locals wurde bereits von der Flash-Middleware befüllt (und Session gelöscht)
+    successMessage: res.locals.successMessage || null,
+    errorMessage:   res.locals.errorMessage   || null
   });
-  req.session.successMessage = null;
-  req.session.errorMessage   = null;
 });
 
 /**
@@ -633,6 +632,7 @@ router.post('/markt/:id/stand-bearbeiten/:standId', async (req, res) => {
 
   if (!req.session.errorMessage) {
     req.session.successMessage = 'Ihr Stand wurde erfolgreich aktualisiert!';
+    return res.redirect(`/markt/${marketId}`);
   }
   res.redirect(`/markt/${marketId}/stand-bearbeiten/${standId}?code=${encodeURIComponent(code)}`);
 });
