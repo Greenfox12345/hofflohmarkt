@@ -354,10 +354,10 @@ router.get('/markt/:id/karte-download', async (req, res) => {
     // ── Query-Parameter: Rand in % und Zoomstufe ───────────────────────────────────────────
     // rand_h: Rand links+rechts in % der Querausdehnung (Standard: 20)
     // rand_v: Rand oben+unten  in % der Längsausdehnung (Standard: 20)
-    // zoom:   Zoomstufe 13–16 (Standard: 16, max: 16)
+    // zoom:   Zoomstufe 13–19 (Standard: 17, max: 19)
     const randH     = Math.min(200, Math.max(0, parseFloat(req.query.rand_h) || 20)) / 100;
     const randV     = Math.min(200, Math.max(0, parseFloat(req.query.rand_v) || 20)) / 100;
-    const fixedZoom = Math.min(16, Math.max(13, parseInt(req.query.zoom) || 16));
+    const fixedZoom = Math.min(19, Math.max(13, parseInt(req.query.zoom) || 17));
 
     // Rand in Grad umrechnen (relativ zur Polygon-Ausdehnung)
     const polyLngSpan = maxLng - minLng;
@@ -379,9 +379,9 @@ router.get('/markt/:id/karte-download', async (req, res) => {
     const latToY = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, z);
     let imgWidth  = Math.round((lonToX(paddedMaxLng, fixedZoom) - lonToX(paddedMinLng, fixedZoom)) * TILE_SIZE);
     let imgHeight = Math.round((latToY(paddedMinLat, fixedZoom) - latToY(paddedMaxLat, fixedZoom)) * TILE_SIZE);
-    // Sicherheitsgrenzen (max 4000px, min 400px)
-    if (imgWidth > 4000 || imgHeight > 4000) {
-      const scale = Math.min(4000 / imgWidth, 4000 / imgHeight);
+    // Sicherheitsgrenzen (max 8000px für doppelte Auflösung/Schärfe, min 400px)
+    if (imgWidth > 8000 || imgHeight > 8000) {
+      const scale = Math.min(8000 / imgWidth, 8000 / imgHeight);
       imgWidth  = Math.round(imgWidth  * scale);
       imgHeight = Math.round(imgHeight * scale);
     }
