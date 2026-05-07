@@ -237,6 +237,21 @@
       <% } %>
     </form>
   </section>
+
+  <!-- Stand per Code bearbeiten -->
+  <section class="stand-code-section">
+    <h2>Stand bearbeiten</h2>
+    <p>Sie haben einen Stand angemeldet und möchten Ihre Angaben ändern? Geben Sie Ihren persönlichen Bearbeitungscode ein.</p>
+    <form action="/markt/<%= market.id %>/stand-code" method="POST" class="stand-code-form">
+      <div class="stand-code-row">
+        <input type="text" name="edit_code" maxlength="6" placeholder="z. B. AB3X7Q"
+               autocomplete="off" autocapitalize="characters" style="text-transform:uppercase"
+               oninput="this.value=this.value.toUpperCase()">
+        <button type="submit" class="btn btn-primary">Weiter</button>
+      </div>
+    </form>
+  </section>
+
 </section>
 
 <%- include('partials/footer') %>

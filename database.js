@@ -86,9 +86,17 @@ function initTables() {
       categories TEXT DEFAULT '[]',
       name TEXT DEFAULT '',
       directions TEXT DEFAULT '',
+      edit_code TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Migration: edit_code-Spalte nachrüsten falls Tabelle bereits existiert
+  const cols = db.prepare("PRAGMA table_info(stands)").all().map(c => c.name);
+  if (!cols.includes('edit_code')) {
+    db.exec("ALTER TABLE stands ADD COLUMN edit_code TEXT DEFAULT ''");
+    console.log('Migration: edit_code-Spalte zu stands hinzugefügt.');
+  }
 }
 
 /**

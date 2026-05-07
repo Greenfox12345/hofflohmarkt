@@ -290,10 +290,15 @@ router.post('/markt/:id/anmelden', async (req, res) => {
       .run(JSON.stringify(updatedCategories), marketId);
   }
 
+  // ---- Bearbeitungscode generieren ----
+  const codeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let editCode = '';
+  for (let i = 0; i < 6; i++) editCode += codeChars[Math.floor(Math.random() * codeChars.length)];
+
   // ---- Stand speichern ----
   db.prepare(`
-    INSERT INTO stands (market_id, address, latitude, longitude, categories, name, directions)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO stands (market_id, address, latitude, longitude, categories, name, directions, edit_code)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     marketId,
     fullAddress,
@@ -301,10 +306,10 @@ router.post('/markt/:id/anmelden', async (req, res) => {
     coords.lon,
     JSON.stringify(selectedCategories),
     (name || '').trim(),
-    (directions || '').trim()
+    (directions || '').trim(),
+    editCode
   );
-
-  req.session.successMessage = `Ihr Stand an der Adresse "${fullAddress}" wurde erfolgreich angemeldet!`;
+  req.session.successMessage = `Ihr Stand an der Adresse "${fullAddress}" wurde erfolgreich angemeldet! Ihr persönlicher Bearbeitungscode lautet: ${editCode} – bitte notieren Sie diesen Code, um Ihre Angaben später ändern zu können.`;
   res.redirect(`/markt/${marketId}`);
 });
 
@@ -523,4 +528,80 @@ router.get('/datenschutz', (req, res) => {
   });
 });
 
+// ============================================
+// Stand per Code bearbeiten (Nutzer)
+// ============================================
+
+/**
+ * POST /markt/:id/stand-code
+ * Prüft den eingegebenen Code und leitet zur Bearbeitungsseite weiter.
+ */
+router.post('/markt/:id/stand-code', (req, res) => {
+  const marketId = parseInt(req.params.id);
+  const { edit_code } = req.body;
+  if (!edit_code || !edit_code.trim()) {
+    req.session.errorMessage = 'Bitte einen Bearbeitungscode eingeben.';
+    return res.redirect(`/markt/${marketId}`);
+  }
+  const stand = db.prepare(
+    'SELECT * FROM stands WHERE market_id = ? AND UPPER(edit_code) = UPPER(?)'
+  ).get(marketId, edit_code.trim());
+  if (!stand) {
+    req.session.errorMessage = 'Ungültiger Code. Bitte prüfen Sie Ihre Eingabe.';
+    return res.redirect(`/markt/${marketId}`);
+  }
+  res.redirect(`/markt/${marketId}/stand-bearbeiten/${stand.id}?code=${encodeURIComponent(edit_code.trim())}`);
+});
+
+/**
+ * GET /markt/:id/stand-bearbeiten/:standId
+ * Zeigt das Bearbeitungsformular für einen Stand (mit Code-Prüfung).
+ */
+router.get('/markt/:id/stand-bearbeiten/:standId', (req, res) => {
+  const marketId = parseInt(req.params.id);
+  const standId  = parseInt(req.params.standId);
+  const code     = req.query.code || '';
+  const market   = db.prepare('SELECT * FROM markets WHERE id = ?').get(marketId);
+  const stand    = db.prepare('SELECT * FROM stands WHERE id = ? AND market_id = ?').get(standId, marketId);
+  if (!market || !stand || stand.edit_code.toUpperCase() !== code.toUpperCase()) {
+    req.session.errorMessage = 'Ungültiger oder abgelaufener Link.';
+    return res.redirect(market ? `/markt/${marketId}` : '/');
+  }
+  res.render('stand-bearbeiten', {
+    title: 'Stand bearbeiten',
+    market: { ...market, categoriesParsed: JSON.parse(market.categories || '[]') },
+    stand:  { ...stand,  categoriesParsed: JSON.parse(stand.categories  || '[]') },
+    code,
+    successMessage: req.session.successMessage || null,
+    errorMessage:   req.session.errorMessage   || null
+  });
+  req.session.successMessage = null;
+  req.session.errorMessage   = null;
+});
+
+/**
+ * POST /markt/:id/stand-bearbeiten/:standId
+ * Speichert die Änderungen am Stand (mit Code-Prüfung).
+ */
+router.post('/markt/:id/stand-bearbeiten/:standId', (req, res) => {
+  const marketId = parseInt(req.params.id);
+  const standId  = parseInt(req.params.standId);
+  const { code, name, directions } = req.body;
+  let selectedCategories = req.body.categories || [];
+  if (typeof selectedCategories === 'string') selectedCategories = [selectedCategories];
+
+  const stand = db.prepare('SELECT * FROM stands WHERE id = ? AND market_id = ?').get(standId, marketId);
+  if (!stand || stand.edit_code.toUpperCase() !== (code || '').toUpperCase()) {
+    req.session.errorMessage = 'Ungültiger Code.';
+    return res.redirect(`/markt/${marketId}`);
+  }
+  db.prepare(`
+    UPDATE stands SET name = ?, directions = ?, categories = ? WHERE id = ?
+  `).run((name || '').trim(), (directions || '').trim(), JSON.stringify(selectedCategories), stand.id);
+
+  req.session.successMessage = 'Ihr Stand wurde erfolgreich aktualisiert!';
+  res.redirect(`/markt/${marketId}/stand-bearbeiten/${standId}?code=${encodeURIComponent(code)}`);
+});
+
 module.exports = router;
+module.exports.geocodeAddress = geocodeAddress;

@@ -1,0 +1,63 @@
+<% locals.needsMap = false; %>
+<%- include('partials/header') %>
+
+<section class="market-detail">
+
+  <h1>Stand bearbeiten</h1>
+  <p class="market-time"><strong>Markt:</strong> <%= market.name %></p>
+  <p><strong>Adresse:</strong> <%= stand.address %></p>
+
+  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <div class="alert alert-success"><%= successMessage %></div>
+  <% } %>
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-error"><%= errorMessage %></div>
+  <% } %>
+
+  <section class="registration-section">
+    <form action="/markt/<%= market.id %>/stand-bearbeiten/<%= stand.id %>" method="POST"
+          class="registration-form">
+      <!-- Code als Hidden-Feld mitsenden -->
+      <input type="hidden" name="code" value="<%= code %>">
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="standname">Name / Standbezeichnung (optional)</label>
+          <input type="text" id="standname" name="name"
+                 value="<%= stand.name || '' %>" placeholder="z. B. Familie Müller">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="directions">Wegbeschreibung (optional)</label>
+          <textarea id="directions" name="directions" rows="2"
+                    placeholder="z. B. Hinterhof, 2. Eingang links"><%= stand.directions || '' %></textarea>
+        </div>
+      </div>
+
+      <% if (market.categoriesParsed.length > 0) { %>
+        <div class="form-group">
+          <label>Was bieten Sie an?</label>
+          <div class="checkbox-group">
+            <% market.categoriesParsed.forEach(cat => { %>
+              <label class="checkbox-label">
+                <input type="checkbox" name="categories" value="<%= cat %>"
+                  <%= stand.categoriesParsed.includes(cat) ? 'checked' : '' %>>
+                <%= cat %>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+
+      <div class="form-actions" style="margin-top:1.5rem; display:flex; gap:1rem; align-items:center">
+        <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+        <a href="/markt/<%= market.id %>" class="btn btn-secondary">Zurück zum Markt</a>
+      </div>
+    </form>
+  </section>
+
+</section>
+
+<%- include('partials/footer') %>

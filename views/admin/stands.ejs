@@ -7,11 +7,62 @@
     <a href="/admin/markets" class="btn btn-secondary">&larr; Zurück zur Marktübersicht</a>
   </div>
 
+  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <div class="alert alert-success"><%= successMessage %></div>
+  <% } %>
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-error"><%= errorMessage %></div>
+  <% } %>
+
+  <!-- Stand hinzufügen -->
+  <div class="admin-card" style="margin-bottom:2rem">
+    <h2>Stand hinzufügen</h2>
+    <form action="/admin/markets/<%= market.id %>/stands/add" method="POST" class="inline-form">
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Straße *</label>
+          <input type="text" name="street" required placeholder="Musterstraße">
+        </div>
+        <div class="form-group flex-1">
+          <label>Hausnummer *</label>
+          <input type="text" name="housenumber" required placeholder="42">
+        </div>
+        <div class="form-group flex-1">
+          <label>PLZ *</label>
+          <input type="text" name="zip" required placeholder="12345">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Name / Standbezeichnung</label>
+          <input type="text" name="name" placeholder="z. B. Familie Müller">
+        </div>
+        <div class="form-group flex-2">
+          <label>Wegbeschreibung</label>
+          <input type="text" name="directions" placeholder="z. B. Hinterhof, 2. Eingang links">
+        </div>
+      </div>
+      <% if (market.categoriesParsed && market.categoriesParsed.length > 0) { %>
+        <div class="form-group">
+          <label>Kategorien</label>
+          <div class="checkbox-group">
+            <% market.categoriesParsed.forEach(cat => { %>
+              <label class="checkbox-label">
+                <input type="checkbox" name="categories" value="<%= cat %>"> <%= cat %>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+      <button type="submit" class="btn btn-primary">Stand hinzufügen &amp; Code generieren</button>
+    </form>
+  </div>
+
+  <!-- Stände-Tabelle -->
   <% if (stands.length === 0) { %>
     <p class="empty-state">Für diesen Markt sind noch keine Stände angemeldet.</p>
   <% } else { %>
     <p><strong><%= stands.length %></strong> Stand/Stände angemeldet.</p>
-
     <div class="table-responsive">
       <table class="admin-table">
         <thead>
@@ -21,31 +72,75 @@
             <th>Name</th>
             <th>Wegbeschreibung</th>
             <th>Kategorien</th>
+            <th>Code</th>
             <th>Angemeldet am</th>
-            <th>Aktion</th>
+            <th>Aktionen</th>
           </tr>
         </thead>
         <tbody>
           <% stands.forEach(stand => { %>
-            <tr>
+            <tr id="row-<%= stand.id %>">
               <td><%= stand.id %></td>
               <td><%= stand.address %></td>
-              <td><%= stand.name || '&ndash;' %></td>
-              <td><%= stand.directions || '&ndash;' %></td>
+              <td><%= stand.name || '' %></td>
+              <td><%= stand.directions || '' %></td>
               <td>
                 <% if (stand.categoriesParsed.length > 0) { %>
                   <% stand.categoriesParsed.forEach(cat => { %>
                     <span class="category-tag small"><%= cat %></span>
                   <% }) %>
-                <% } else { %>
-                  &ndash;
+                <% } %>
+              </td>
+              <td>
+                <% if (stand.edit_code) { %>
+                  <code class="edit-code"><%= stand.edit_code %></code>
                 <% } %>
               </td>
               <td><small><%= stand.createdFormatted %></small></td>
-              <td>
+              <td class="action-cell">
+                <button type="button" class="btn btn-small btn-secondary"
+                        onclick="toggleEdit(<%= stand.id %>)">Bearbeiten</button>
                 <form action="/admin/markets/<%= market.id %>/stands/<%= stand.id %>/delete" method="POST"
-                      onsubmit="return confirm('Stand wirklich löschen?');">
+                      style="display:inline" onsubmit="return confirm('Stand wirklich löschen?');">
                   <button type="submit" class="btn btn-small btn-danger">Löschen</button>
+                </form>
+              </td>
+            </tr>
+            <tr id="edit-<%= stand.id %>" class="edit-row" style="display:none">
+              <td colspan="8">
+                <form action="/admin/markets/<%= market.id %>/stands/<%= stand.id %>/edit" method="POST"
+                      class="inline-edit-form">
+                  <div class="form-row">
+                    <div class="form-group flex-2">
+                      <label>Name</label>
+                      <input type="text" name="name" value="<%= stand.name || '' %>"
+                             placeholder="z. B. Familie Müller">
+                    </div>
+                    <div class="form-group flex-2">
+                      <label>Wegbeschreibung</label>
+                      <input type="text" name="directions" value="<%= stand.directions || '' %>"
+                             placeholder="z. B. Hinterhof">
+                    </div>
+                  </div>
+                  <% if (market.categoriesParsed && market.categoriesParsed.length > 0) { %>
+                    <div class="form-group">
+                      <label>Kategorien</label>
+                      <div class="checkbox-group">
+                        <% market.categoriesParsed.forEach(cat => { %>
+                          <label class="checkbox-label">
+                            <input type="checkbox" name="categories" value="<%= cat %>"
+                              <%= stand.categoriesParsed.includes(cat) ? 'checked' : '' %>>
+                            <%= cat %>
+                          </label>
+                        <% }) %>
+                      </div>
+                    </div>
+                  <% } %>
+                  <div class="form-actions" style="margin-top:0.75rem">
+                    <button type="submit" class="btn btn-small btn-primary">Speichern</button>
+                    <button type="button" class="btn btn-small btn-secondary"
+                            onclick="toggleEdit(<%= stand.id %>)">Abbrechen</button>
+                  </div>
                 </form>
               </td>
             </tr>
@@ -56,4 +151,14 @@
   <% } %>
 </section>
 
-<%- include('../partials/footer') %>
+<script>
+function toggleEdit(id) {
+  var editRow = document.getElementById('edit-' + id);
+  var dispRow = document.getElementById('row-' + id);
+  var hidden  = editRow.style.display === 'none';
+  editRow.style.display = hidden ? 'table-row' : 'none';
+  dispRow.style.background = hidden ? '#eef4ff' : '';
+}
+</script>
+
+<%- include('../partials/footer') %> %>

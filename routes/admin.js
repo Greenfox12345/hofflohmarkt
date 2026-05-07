@@ -487,22 +487,86 @@ router.get('/markets/:id/stands', (req, res) => {
 
   res.render('admin/stands', {
     title: `Stände – ${market.name}`,
-    market,
-    stands: standsFormatted
+    market: { ...market, categoriesParsed: JSON.parse(market.categories || '[]') },
+    stands: standsFormatted,
+    successMessage: req.session.successMessage || null,
+    errorMessage:   req.session.errorMessage   || null
   });
+  req.session.successMessage = null;
+  req.session.errorMessage   = null;
+});
+
+/// Stand hinzufügen (Admin)
+router.post('/markets/:marketId/stands/add', async (req, res) => {
+  const { marketId } = req.params;
+  const market = db.prepare('SELECT * FROM markets WHERE id = ?').get(marketId);
+  if (!market) {
+    req.session.errorMessage = 'Markt nicht gefunden.';
+    return res.redirect('/admin/markets');
+  }
+  const { street, housenumber, zip, name, directions } = req.body;
+  let selectedCategories = req.body.categories || [];
+  if (typeof selectedCategories === 'string') selectedCategories = [selectedCategories];
+
+  if (!street || !housenumber || !zip) {
+    req.session.errorMessage = 'Bitte Straße, Hausnummer und PLZ ausfüllen.';
+    return res.redirect(`/admin/markets/${marketId}/stands`);
+  }
+  const fullAddress = `${street} ${housenumber}, ${zip}`;
+
+  // Geocoding
+  const { geocodeAddress } = require('./public');
+  let coords;
+  try { coords = await geocodeAddress({ street, housenumber, zip, city: '' }); }
+  catch (e) { coords = null; }
+  if (!coords) {
+    req.session.errorMessage = 'Adresse konnte nicht gefunden werden.';
+    return res.redirect(`/admin/markets/${marketId}/stands`);
+  }
+
+  // 6-stelligen Bearbeitungscode generieren
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+
+  db.prepare(`
+    INSERT INTO stands (market_id, address, latitude, longitude, categories, name, directions, edit_code)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(marketId, fullAddress, coords.lat, coords.lon,
+    JSON.stringify(selectedCategories), (name || '').trim(), (directions || '').trim(), code);
+
+  req.session.successMessage = `Stand "${fullAddress}" wurde hinzugefügt. Bearbeitungscode: ${code}`;
+  res.redirect(`/admin/markets/${marketId}/stands`);
+});
+
+// Stand bearbeiten (Admin)
+router.post('/markets/:marketId/stands/:standId/edit', (req, res) => {
+  const { marketId, standId } = req.params;
+  const stand = db.prepare('SELECT * FROM stands WHERE id = ? AND market_id = ?').get(standId, marketId);
+  if (!stand) {
+    req.session.errorMessage = 'Stand nicht gefunden.';
+    return res.redirect(`/admin/markets/${marketId}/stands`);
+  }
+  const { name, directions } = req.body;
+  let selectedCategories = req.body.categories || [];
+  if (typeof selectedCategories === 'string') selectedCategories = [selectedCategories];
+
+  db.prepare(`
+    UPDATE stands SET name = ?, directions = ?, categories = ? WHERE id = ?
+  `).run((name || '').trim(), (directions || '').trim(), JSON.stringify(selectedCategories), stand.id);
+
+  req.session.successMessage = `Stand "${stand.address}" wurde aktualisiert.`;
+  res.redirect(`/admin/markets/${marketId}/stands`);
 });
 
 // Einzelnen Stand löschen
 router.post('/markets/:marketId/stands/:standId/delete', (req, res) => {
   const { marketId, standId } = req.params;
-
   const stand = db.prepare('SELECT * FROM stands WHERE id = ? AND market_id = ?').get(standId, marketId);
-
   if (stand) {
     db.prepare('DELETE FROM stands WHERE id = ?').run(stand.id);
     req.session.successMessage = `Stand "${stand.address}" wurde gelöscht.`;
   }
-
   res.redirect(`/admin/markets/${marketId}/stands`);
 });
 
