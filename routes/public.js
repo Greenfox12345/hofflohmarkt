@@ -351,59 +351,51 @@ router.get('/markt/:id/karte-download', async (req, res) => {
     const maxLng = Math.max(...lngs);
     const midLat = (minLat + maxLat) / 2;
 
-    // 2 km Rand in Grad umrechnen
-    // 1 Grad Breite ≈ 111 km; 1 Grad Länge ≈ 111 km * cos(lat)
-    const PAD_KM = 2.5;
-    const padLat = PAD_KM / 111;
-    const padLng = PAD_KM / (111 * Math.cos(midLat * Math.PI / 180));
+    // ── Query-Parameter: Rand in % und Zoomstufe ───────────────────────────────────────────
+    // rand_h: Rand links+rechts in % der Querausdehnung (Standard: 20)
+    // rand_v: Rand oben+unten  in % der Längsausdehnung (Standard: 20)
+    // zoom:   Zoomstufe 13–16 (Standard: 16, max: 16)
+    const randH     = Math.min(200, Math.max(0, parseFloat(req.query.rand_h) || 20)) / 100;
+    const randV     = Math.min(200, Math.max(0, parseFloat(req.query.rand_v) || 20)) / 100;
+    const fixedZoom = Math.min(16, Math.max(13, parseInt(req.query.zoom) || 16));
+
+    // Rand in Grad umrechnen (relativ zur Polygon-Ausdehnung)
+    const polyLngSpan = maxLng - minLng;
+    const polyLatSpan = maxLat - minLat;
+    const padLng = polyLngSpan * randH;
+    const padLat = polyLatSpan * randV;
 
     const paddedMinLat = minLat - padLat;
     const paddedMaxLat = maxLat + padLat;
     const paddedMinLng = minLng - padLng;
     const paddedMaxLng = maxLng + padLng;
 
-    // ── Bildgröße: proportional zur Bounding Box, Basisbreite 2800px ──────
-    // Korrektur: Längengrade werden durch cos(lat) gestaucht
-    const lngSpan = paddedMaxLng - paddedMinLng;
-    const latSpan = paddedMaxLat - paddedMinLat;
-    const aspectRatio = (lngSpan * Math.cos(midLat * Math.PI / 180)) / latSpan;
-    const BASE_WIDTH = 2800;
-    let imgWidth  = BASE_WIDTH;
-    let imgHeight = Math.round(imgWidth / aspectRatio);
-    // Sicherheitsgrenzen
-    if (imgHeight > 4000) { imgHeight = 4000; imgWidth = Math.round(imgHeight * aspectRatio); }
-    if (imgWidth  > 4000) { imgWidth  = 4000; imgHeight = Math.round(imgWidth  / aspectRatio); }
-    // Mindestgröße
+    // ── Bildgröße: exakt aus gepaddeter BBox bei festem Zoom ───────────────────────────────────────────────
+    // Bildbreite/-höhe = Anzahl Pixel, die die gepaddete BBox bei fixedZoom belegt.
+    // So erscheint das Polygon bei mehr Rand kleiner im Verhältnis zur Gesamtfläche.
+    // Die OSM-Tile-Formel berücksichtigt die cos(lat)-Stauchung bereits korrekt.
+    const TILE_SIZE = 256;
+    const lonToX = (lon, z) => (lon + 180) / 360 * Math.pow(2, z);
+    const latToY = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, z);
+    let imgWidth  = Math.round((lonToX(paddedMaxLng, fixedZoom) - lonToX(paddedMinLng, fixedZoom)) * TILE_SIZE);
+    let imgHeight = Math.round((latToY(paddedMinLat, fixedZoom) - latToY(paddedMaxLat, fixedZoom)) * TILE_SIZE);
+    // Sicherheitsgrenzen (max 4000px, min 400px)
+    if (imgWidth > 4000 || imgHeight > 4000) {
+      const scale = Math.min(4000 / imgWidth, 4000 / imgHeight);
+      imgWidth  = Math.round(imgWidth  * scale);
+      imgHeight = Math.round(imgHeight * scale);
+    }
     if (imgWidth  < 400)  imgWidth  = 400;
     if (imgHeight < 400)  imgHeight = 400;
 
-    // ── Zoom-Strategie ────────────────────────────────────────────────────
-    // Polygon-Ausdehnung in km berechnen (Diagonale der Bounding Box)
-    const polyWidthKm  = (maxLng - minLng) * 111 * Math.cos(midLat * Math.PI / 180);
-    const polyHeightKm = (maxLat - minLat) * 111;
-    const polyDiagKm   = Math.sqrt(polyWidthKm * polyWidthKm + polyHeightKm * polyHeightKm);
-
-    // Gesamtfläche inkl. Rand: wenn das Polygon klein ist, erzwingen wir Zoom 17
-    // Faustregel: bei Zoom 17 passt ein Bereich von ca. 0,5 km in 256px
-    // → Gesamtbreite (Polygon + 2×Rand) in km bestimmt den Mindest-Zoom
-    const totalWidthKm = polyWidthKm + 2 * PAD_KM;
-    // Zoom 17: ~0,6 km sichtbar bei 256px → bei 2800px ~6,6 km
-    // Zoom 16: ~1,2 km bei 256px → ~13 km bei 2800px
-    // Zoom 15: ~2,4 km bei 256px → ~26 km bei 2800px
-    let minZoom;
-    if (totalWidthKm <= 7)  minZoom = 17;
-    else if (totalWidthKm <= 14) minZoom = 16;
-    else if (totalWidthKm <= 28) minZoom = 15;
-    else minZoom = 14;
-
-    // staticmaps-Instanz
+    // staticmaps-Instanz mit festem Zoom
     const map = new StaticMaps({
       width:  imgWidth,
       height: imgHeight,
       tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       tileSubdomains: ['a', 'b', 'c'],
-      tileSize: 256,
-      zoomRange: { min: minZoom, max: 16 }
+      tileSize: TILE_SIZE,
+      zoomRange: { min: fixedZoom, max: fixedZoom } // exakter Zoom
     });
 
     // ── Polygon als Overlay ────────────────────────────────────────────────
@@ -467,13 +459,25 @@ router.get('/markt/:id/karte-download', async (req, res) => {
       try { fs.unlinkSync(scaledIconPath); } catch (_) {}
     } : () => {};
 
-    // ── Rendern: Bounding Box als center-Array übergeben ──────────────────
-    // staticmaps akzeptiert [minLng, minLat, maxLng, maxLat] als center-Extent
-    await map.render([paddedMinLng, paddedMinLat, paddedMaxLng, paddedMaxLat]);
+    // ── Rendern: Expliziter Mittelpunkt + Zoomstufe ──────────────────────
+    // Wichtig: render([minLng, minLat, maxLng, maxLat]) würde die Bounding Box
+    // als einen von mehreren Extents behandeln und mit Polygon/Marker-Extents
+    // kombinieren – der Rand hätte dann keine Wirkung.
+    // Stattdessen: Mittelpunkt der gepaddeten BBox + fixedZoom explizit übergeben.
+    // staticmaps setzt dann centerX/centerY direkt, ohne determineExtent() zu rufen.
+    const centerLon = (paddedMinLng + paddedMaxLng) / 2;
+    const centerLat = (paddedMinLat + paddedMaxLat) / 2;
+    await map.render([centerLon, centerLat], fixedZoom);
 
-    // ── Als PNG-Buffer ausgeben ────────────────────────────────────────────
-    const buffer = await map.image.buffer('image/png');
+    // ── PNG-Buffer + verlustfreie Komprimierung via sharp ────────────────────────
+    const rawBuffer = await map.image.buffer('image/png');
     cleanupTmpIcon(); // Temporäre Icon-Datei löschen
+
+    // Verlustfreie Komprimierung: sharp mit compressionLevel 9 (max) und adaptiveFiltering
+    // Kein Qualitätsverlust, aber deutlich kleinere Datei (typisch 30–60% kleiner)
+    const buffer = await sharp(rawBuffer)
+      .png({ compressionLevel: 9, adaptiveFiltering: true, palette: false })
+      .toBuffer();
 
     const safeName = market.name
       .replace(/[^a-zA-Z0-9äöüÄÖÜß\-]/g, '_')
