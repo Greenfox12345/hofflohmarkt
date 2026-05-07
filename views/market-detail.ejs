@@ -67,7 +67,39 @@
     <span class="map-download-hint">PNG mit einstellbarem Rand und Zoomstufe</span>
   </div>
 
-  <!-- Karten-Download-Dialog -->
+  <!-- Popup: Bearbeitungscode nach Standanmeldung -->
+<% if (typeof newStandCode !== 'undefined' && newStandCode) { %>
+<dialog id="code-popup" class="karte-dialog" open>
+  <div class="karte-dialog-form" style="text-align:center; max-width:420px">
+    <div style="font-size:2.5rem; margin-bottom:0.5rem">✅</div>
+    <h3 style="margin-bottom:0.5rem">Stand erfolgreich angemeldet!</h3>
+    <p style="margin-bottom:1.2rem">Bitte notieren Sie Ihren persönlichen Bearbeitungscode. Mit diesem Code können Sie Ihre Angaben später jederzeit ändern.</p>
+    <div class="code-display">
+      <span class="code-value"><%= newStandCode %></span>
+      <button type="button" class="btn-copy-code" onclick="copyCode('<%= newStandCode %>')" title="Code kopieren">
+        📋 Kopieren
+      </button>
+    </div>
+    <p class="code-hint">Geben Sie diesen Code unten auf der Seite unter &bdquo;Stand bearbeiten&ldquo; ein.</p>
+    <div class="karte-dialog-actions" style="justify-content:center; margin-top:1.5rem">
+      <button type="button" class="btn btn-primary" onclick="document.getElementById('code-popup').close()">
+        Verstanden
+      </button>
+    </div>
+  </div>
+</dialog>
+<script>
+function copyCode(code) {
+  navigator.clipboard.writeText(code).then(function() {
+    const btn = document.querySelector('.btn-copy-code');
+    btn.textContent = '✓ Kopiert!';
+    setTimeout(function() { btn.textContent = '📋 Kopieren'; }, 2000);
+  });
+}
+</script>
+<% } %>
+
+<!-- Karten-Download-Dialog -->
   <dialog id="karte-dialog" class="karte-dialog">
     <div class="karte-dialog-form">
       <h3>&#x1F5FA; Karte herunterladen</h3>

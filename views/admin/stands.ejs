@@ -111,6 +111,32 @@
                 <form action="/admin/markets/<%= market.id %>/stands/<%= stand.id %>/edit" method="POST"
                       class="inline-edit-form">
                   <div class="form-row">
+                    <%
+                      // Adresse aufteilen: "Straße Hausnr, PLZ"
+                      const addrParts = (stand.address || '').split(',');
+                      const streetPart = (addrParts[0] || '').trim();
+                      const zipPart = (addrParts[1] || '').trim();
+                      const streetWords = streetPart.split(' ');
+                      const houseEdit = streetWords.pop() || '';
+                      const streetEdit = streetWords.join(' ');
+                    %>
+                    <div class="form-group flex-2">
+                      <label>Straße</label>
+                      <input type="text" name="street" value="<%= streetEdit %>"
+                             placeholder="Musterstraße">
+                    </div>
+                    <div class="form-group flex-1">
+                      <label>Hausnummer</label>
+                      <input type="text" name="housenumber" value="<%= houseEdit %>"
+                             placeholder="42">
+                    </div>
+                    <div class="form-group flex-1">
+                      <label>PLZ</label>
+                      <input type="text" name="zip" value="<%= zipPart %>"
+                             placeholder="12345">
+                    </div>
+                  </div>
+                  <div class="form-row">
                     <div class="form-group flex-2">
                       <label>Name</label>
                       <input type="text" name="name" value="<%= stand.name || '' %>"

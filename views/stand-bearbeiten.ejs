@@ -20,6 +20,33 @@
       <!-- Code als Hidden-Feld mitsenden -->
       <input type="hidden" name="code" value="<%= code %>">
 
+      <%
+        // Adresse aufteilen: "Straße Hausnr, PLZ"
+        const addrParts = (stand.address || '').split(',');
+        const streetPart = (addrParts[0] || '').trim();
+        const zipPart = (addrParts[1] || '').trim();
+        const streetWords = streetPart.split(' ');
+        const houseVal = streetWords.pop() || '';
+        const streetVal = streetWords.join(' ');
+      %>
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label for="edit-street">Straße</label>
+          <input type="text" id="edit-street" name="street" value="<%= streetVal %>"
+                 placeholder="Musterstraße">
+        </div>
+        <div class="form-group flex-1">
+          <label for="edit-housenumber">Hausnummer</label>
+          <input type="text" id="edit-housenumber" name="housenumber" value="<%= houseVal %>"
+                 placeholder="42">
+        </div>
+        <div class="form-group flex-1">
+          <label for="edit-zip">PLZ</label>
+          <input type="text" id="edit-zip" name="zip" value="<%= zipPart %>"
+                 placeholder="12345">
+        </div>
+      </div>
+
       <div class="form-row">
         <div class="form-group flex-1">
           <label for="standname">Name / Standbezeichnung (optional)</label>

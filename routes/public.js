@@ -188,14 +188,16 @@ router.get('/markt/:id', (req, res) => {
     // Flash-Nachrichten
     successMessage: res.locals.successMessage,
     errorMessage: res.locals.errorMessage,
+    // Neuer Stand: Bearbeitungscode für Popup
+    newStandCode: req.session.newStandCode || null,
     // Für Duplikat-Hinweis: vorherige Formulardaten
     formData: req.session.formData || null,
     duplicateStands: req.session.duplicateStands || null
   });
-
-  // Formulardaten und Duplikat-Info nach Anzeige löschen
+  // Formulardaten, Duplikat-Info und Code nach Anzeige löschen
   delete req.session.formData;
   delete req.session.duplicateStands;
+  delete req.session.newStandCode;
 });
 
 // ============================================
@@ -309,7 +311,8 @@ router.post('/markt/:id/anmelden', async (req, res) => {
     (directions || '').trim(),
     editCode
   );
-  req.session.successMessage = `Ihr Stand an der Adresse "${fullAddress}" wurde erfolgreich angemeldet! Ihr persönlicher Bearbeitungscode lautet: ${editCode} – bitte notieren Sie diesen Code, um Ihre Angaben später ändern zu können.`;
+  req.session.successMessage = `Ihr Stand wurde erfolgreich angemeldet!`;
+  req.session.newStandCode = editCode;
   res.redirect(`/markt/${marketId}`);
 });
 
@@ -583,10 +586,10 @@ router.get('/markt/:id/stand-bearbeiten/:standId', (req, res) => {
  * POST /markt/:id/stand-bearbeiten/:standId
  * Speichert die Änderungen am Stand (mit Code-Prüfung).
  */
-router.post('/markt/:id/stand-bearbeiten/:standId', (req, res) => {
+router.post('/markt/:id/stand-bearbeiten/:standId', async (req, res) => {
   const marketId = parseInt(req.params.id);
   const standId  = parseInt(req.params.standId);
-  const { code, name, directions } = req.body;
+  const { code, name, directions, street, housenumber, zip } = req.body;
   let selectedCategories = req.body.categories || [];
   if (typeof selectedCategories === 'string') selectedCategories = [selectedCategories];
 
@@ -595,11 +598,34 @@ router.post('/markt/:id/stand-bearbeiten/:standId', (req, res) => {
     req.session.errorMessage = 'Ungültiger Code.';
     return res.redirect(`/markt/${marketId}`);
   }
-  db.prepare(`
-    UPDATE stands SET name = ?, directions = ?, categories = ? WHERE id = ?
-  `).run((name || '').trim(), (directions || '').trim(), JSON.stringify(selectedCategories), stand.id);
 
-  req.session.successMessage = 'Ihr Stand wurde erfolgreich aktualisiert!';
+  let newAddress = stand.address;
+  let newLat = stand.latitude;
+  let newLon = stand.longitude;
+
+  if (street && housenumber && zip) {
+    const fullAddress = `${street.trim()} ${housenumber.trim()}, ${zip.trim()}`;
+    if (fullAddress !== stand.address) {
+      let coords;
+      try { coords = await geocodeAddress({ street: street.trim(), housenumber: housenumber.trim(), zip: zip.trim(), city: '' }); }
+      catch (e) { coords = null; }
+      if (!coords) {
+        req.session.errorMessage = 'Neue Adresse konnte nicht gefunden werden. Andere Felder wurden gespeichert.';
+      } else {
+        newAddress = fullAddress;
+        newLat = coords.lat;
+        newLon = coords.lon;
+      }
+    }
+  }
+
+  db.prepare(`
+    UPDATE stands SET name = ?, directions = ?, categories = ?, address = ?, latitude = ?, longitude = ? WHERE id = ?
+  `).run((name || '').trim(), (directions || '').trim(), JSON.stringify(selectedCategories), newAddress, newLat, newLon, stand.id);
+
+  if (!req.session.errorMessage) {
+    req.session.successMessage = 'Ihr Stand wurde erfolgreich aktualisiert!';
+  }
   res.redirect(`/markt/${marketId}/stand-bearbeiten/${standId}?code=${encodeURIComponent(code)}`);
 });
 

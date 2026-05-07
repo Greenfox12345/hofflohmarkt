@@ -540,22 +540,45 @@ router.post('/markets/:marketId/stands/add', async (req, res) => {
 });
 
 // Stand bearbeiten (Admin)
-router.post('/markets/:marketId/stands/:standId/edit', (req, res) => {
+router.post('/markets/:marketId/stands/:standId/edit', async (req, res) => {
   const { marketId, standId } = req.params;
   const stand = db.prepare('SELECT * FROM stands WHERE id = ? AND market_id = ?').get(standId, marketId);
   if (!stand) {
     req.session.errorMessage = 'Stand nicht gefunden.';
     return res.redirect(`/admin/markets/${marketId}/stands`);
   }
-  const { name, directions } = req.body;
+  const { name, directions, street, housenumber, zip } = req.body;
   let selectedCategories = req.body.categories || [];
   if (typeof selectedCategories === 'string') selectedCategories = [selectedCategories];
 
-  db.prepare(`
-    UPDATE stands SET name = ?, directions = ?, categories = ? WHERE id = ?
-  `).run((name || '').trim(), (directions || '').trim(), JSON.stringify(selectedCategories), stand.id);
+  let newAddress = stand.address;
+  let newLat = stand.latitude;
+  let newLon = stand.longitude;
 
-  req.session.successMessage = `Stand "${stand.address}" wurde aktualisiert.`;
+  // Adresse neu geocodieren wenn Felder ausgefüllt
+  if (street && housenumber && zip) {
+    const fullAddress = `${street.trim()} ${housenumber.trim()}, ${zip.trim()}`;
+    if (fullAddress !== stand.address) {
+      const { geocodeAddress } = require('./public');
+      let coords;
+      try { coords = await geocodeAddress({ street: street.trim(), housenumber: housenumber.trim(), zip: zip.trim(), city: '' }); }
+      catch (e) { coords = null; }
+      if (!coords) {
+        req.session.errorMessage = 'Neue Adresse konnte nicht gefunden werden. Andere Felder wurden gespeichert.';
+      } else {
+        newAddress = fullAddress;
+        newLat = coords.lat;
+        newLon = coords.lon;
+      }
+    }
+  }
+
+  db.prepare(`
+    UPDATE stands SET name = ?, directions = ?, categories = ?, address = ?, latitude = ?, longitude = ? WHERE id = ?
+  `).run((name || '').trim(), (directions || '').trim(), JSON.stringify(selectedCategories), newAddress, newLat, newLon, stand.id);
+  if (!req.session.errorMessage) {
+    req.session.successMessage = `Stand "${newAddress}" wurde aktualisiert.`;
+  }
   res.redirect(`/admin/markets/${marketId}/stands`);
 });
 
