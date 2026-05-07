@@ -61,13 +61,83 @@
   <!-- Leaflet-Karte -->
   <div id="map" class="detail-map"></div>
   <div class="map-actions">
-    <a href="/markt/<%= market.id %>/karte-download"
-       class="btn btn-download-map"
-       download>
+    <button type="button" class="btn btn-download-map" onclick="document.getElementById('karte-dialog').showModal()">
       &#x1F5FA; Karte als Bild herunterladen
-    </a>
-    <span class="map-download-hint">PNG mit Geltungsbereich und Hausnummern</span>
+    </button>
+    <span class="map-download-hint">PNG mit einstellbarem Rand und Zoomstufe</span>
   </div>
+
+  <!-- Karten-Download-Dialog -->
+  <dialog id="karte-dialog" class="karte-dialog">
+    <div class="karte-dialog-form">
+      <h3>&#x1F5FA; Karte herunterladen</h3>
+      <p class="karte-dialog-hint">Passe Rand und Zoomstufe an, bevor du die Karte als PNG herunterlädst.</p>
+
+      <div class="karte-dialog-row">
+        <label for="rand-h">Rand links/rechts
+          <span class="karte-dialog-unit">(% der Querausdehnung)</span>
+        </label>
+        <div class="karte-dialog-slider-row">
+          <input type="range" id="rand-h" min="0" max="100" value="20"
+                 oninput="document.getElementById('rand-h-val').textContent = this.value">
+          <span id="rand-h-val" class="karte-dialog-val">20</span>%
+        </div>
+      </div>
+
+      <div class="karte-dialog-row">
+        <label for="rand-v">Rand oben/unten
+          <span class="karte-dialog-unit">(% der Längsausdehnung)</span>
+        </label>
+        <div class="karte-dialog-slider-row">
+          <input type="range" id="rand-v" min="0" max="100" value="20"
+                 oninput="document.getElementById('rand-v-val').textContent = this.value">
+          <span id="rand-v-val" class="karte-dialog-val">20</span>%
+        </div>
+      </div>
+
+      <div class="karte-dialog-row">
+        <label for="zoom-level">Zoomstufe</label>
+        <select id="zoom-level">
+          <option value="14">14 &ndash; Stadtübersicht</option>
+          <option value="15">15 &ndash; Stadtviertel</option>
+          <option value="16" selected>16 &ndash; Straßen &amp; Hausnummern (empfohlen)</option>
+          <option value="17">17 &ndash; Sehr detailliert</option>
+        </select>
+      </div>
+
+      <div class="karte-dialog-actions">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('karte-dialog').close()">
+          Abbrechen
+        </button>
+        <button type="button" class="btn btn-download-map" id="karte-dl-btn" onclick="startKarteDownload(<%= market.id %>)">
+          &#x2B07; Herunterladen
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+  function startKarteDownload(marketId) {
+    const randH = document.getElementById('rand-h').value;
+    const randV = document.getElementById('rand-v').value;
+    const zoom  = document.getElementById('zoom-level').value;
+    const url   = '/markt/' + marketId + '/karte-download?rand_h=' + randH + '&rand_v=' + randV + '&zoom=' + zoom;
+    const btn   = document.getElementById('karte-dl-btn');
+    btn.textContent = '⏳ Wird generiert…';
+    btn.disabled = true;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() {
+      btn.innerHTML = '&#x2B07; Herunterladen';
+      btn.disabled = false;
+      document.getElementById('karte-dialog').close();
+    }, 3000);
+  }
+  </script>
 
   <p class="stand-count"><strong><%= stands.length %></strong> Stand/Stände angemeldet</p>
 
