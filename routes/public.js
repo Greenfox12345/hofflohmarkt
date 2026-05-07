@@ -414,7 +414,8 @@ router.get('/markt/:id/karte-download', async (req, res) => {
     // staticmaps skaliert Icons NICHT automatisch – wir müssen das selbst tun.
     const sharp = require('sharp');
     const os    = require('os');
-    const ICON_SIZE = 24; // px bei doppelter Auflösung gut lesbar
+    // Icon-Größe: bei Zoom 17 um 50% größer (36px) als bei Zoom 15 (24px)
+    const ICON_SIZE = fixedZoom >= 17 ? 36 : 24;
 
     let scaledIconPath = null;
     if (market.marker_icon) {
