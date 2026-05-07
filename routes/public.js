@@ -354,10 +354,10 @@ router.get('/markt/:id/karte-download', async (req, res) => {
     // ── Query-Parameter: Rand in % und Zoomstufe ───────────────────────────────────────────
     // rand_h: Rand links+rechts in % der Querausdehnung (Standard: 20)
     // rand_v: Rand oben+unten  in % der Längsausdehnung (Standard: 20)
-    // zoom:   Zoomstufe 13–19 (Standard: 17, max: 19)
+    // zoom:   Zoomstufe 13–17 (Standard: 17, max: 17)
     const randH     = Math.min(200, Math.max(0, parseFloat(req.query.rand_h) || 20)) / 100;
     const randV     = Math.min(200, Math.max(0, parseFloat(req.query.rand_v) || 20)) / 100;
-    const fixedZoom = Math.min(19, Math.max(13, parseInt(req.query.zoom) || 17));
+    const fixedZoom = Math.min(17, Math.max(13, parseInt(req.query.zoom) || 17));
 
     // Rand in Grad umrechnen (relativ zur Polygon-Ausdehnung)
     const polyLngSpan = maxLng - minLng;
