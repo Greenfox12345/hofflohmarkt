@@ -610,12 +610,20 @@ router.post('/markt/:id/stand-bearbeiten/:standId', async (req, res) => {
       try { coords = await geocodeAddress({ street: street.trim(), housenumber: housenumber.trim(), zip: zip.trim(), city: '' }); }
       catch (e) { coords = null; }
       if (!coords) {
-        req.session.errorMessage = 'Neue Adresse konnte nicht gefunden werden. Andere Felder wurden gespeichert.';
-      } else {
-        newAddress = fullAddress;
-        newLat = coords.lat;
-        newLon = coords.lon;
+        req.session.errorMessage = 'Die neue Adresse konnte nicht gefunden werden. Bitte prüfen Sie Ihre Eingabe.';
+        return res.redirect(`/markt/${marketId}/stand-bearbeiten/${standId}?code=${encodeURIComponent(code)}`);
       }
+      // Polygon-Prüfung: liegt die neue Adresse im Marktgebiet?
+      const market = db.prepare('SELECT polygon FROM markets WHERE id = ?').get(marketId);
+      const polygon = JSON.parse((market && market.polygon) || '[]');
+      const isInside = polygon.length >= 3 ? pointInPolygon([coords.lat, coords.lon], polygon) : true;
+      if (!isInside) {
+        req.session.errorMessage = 'Die neue Adresse liegt nicht im Geltungsbereich dieses Hofflohmarktes.';
+        return res.redirect(`/markt/${marketId}/stand-bearbeiten/${standId}?code=${encodeURIComponent(code)}`);
+      }
+      newAddress = fullAddress;
+      newLat = coords.lat;
+      newLon = coords.lon;
     }
   }
 
