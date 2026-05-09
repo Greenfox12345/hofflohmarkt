@@ -69,7 +69,7 @@
 
   <!-- Popup: Bearbeitungscode nach Standanmeldung -->
 <% if (typeof newStandCode !== 'undefined' && newStandCode) { %>
-<dialog id="code-popup" class="karte-dialog" open>
+<dialog id="code-popup" class="karte-dialog">
   <div class="karte-dialog-form" style="text-align:center; max-width:420px">
     <div style="font-size:2.5rem; margin-bottom:0.5rem">✅</div>
     <h3 style="margin-bottom:0.5rem">Stand erfolgreich angemeldet!</h3>
@@ -89,9 +89,14 @@
   </div>
 </dialog>
 <script>
+// Zentriertes Popup öffnen sobald Seite geladen ist
+document.addEventListener('DOMContentLoaded', function() {
+  var popup = document.getElementById('code-popup');
+  if (popup) popup.showModal();
+});
 function copyCode(code) {
   navigator.clipboard.writeText(code).then(function() {
-    const btn = document.querySelector('.btn-copy-code');
+    var btn = document.querySelector('.btn-copy-code');
     btn.textContent = '✓ Kopiert!';
     setTimeout(function() { btn.textContent = '📋 Kopieren'; }, 2000);
   });
@@ -274,17 +279,172 @@ function copyCode(code) {
   <section class="stand-code-section">
     <h2>Stand bearbeiten</h2>
     <p>Sie haben einen Stand angemeldet und möchten Ihre Angaben ändern? Geben Sie Ihren persönlichen Bearbeitungscode ein.</p>
-    <form action="/markt/<%= market.id %>/stand-code" method="POST" class="stand-code-form">
-      <div class="stand-code-row">
-        <input type="text" name="edit_code" maxlength="6" placeholder="z. B. AB3X7Q"
-               autocomplete="off" autocapitalize="characters" style="text-transform:uppercase"
-               oninput="this.value=this.value.toUpperCase()">
-        <button type="submit" class="btn btn-primary">Weiter</button>
-      </div>
-    </form>
+    <div class="stand-code-row">
+      <input type="text" id="stand-edit-code-input" maxlength="6" placeholder="z. B. AB3X7Q"
+             autocomplete="off" autocapitalize="characters"
+             oninput="this.value=this.value.toUpperCase()">
+      <button type="button" class="btn btn-primary" onclick="openStandEditPopup()">Weiter</button>
+    </div>
+    <div id="stand-code-error" class="alert alert-error" style="display:none;margin-top:0.75rem"></div>
   </section>
 
 </section>
+
+<!-- Bearbeitungs-Popup für Stände -->
+<dialog id="stand-edit-popup" class="karte-dialog stand-edit-dialog">
+  <div class="karte-dialog-form">
+    <h3>✏️ Stand bearbeiten</h3>
+    <div id="stand-edit-error" class="alert alert-error" style="display:none;margin-bottom:1rem"></div>
+    <div id="stand-edit-success" class="alert alert-success" style="display:none;margin-bottom:1rem"></div>
+    <form id="stand-edit-form" onsubmit="submitStandEdit(event)">
+      <input type="hidden" id="se-stand-id">
+      <input type="hidden" id="se-code">
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label for="se-street">Straße</label>
+          <input type="text" id="se-street" placeholder="Musterstraße">
+        </div>
+        <div class="form-group flex-1">
+          <label for="se-housenumber">Hausnr.</label>
+          <input type="text" id="se-housenumber" placeholder="42">
+        </div>
+        <div class="form-group flex-1">
+          <label for="se-zip">PLZ</label>
+          <input type="text" id="se-zip" placeholder="12345">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="se-name">Name / Standbezeichnung (optional)</label>
+          <input type="text" id="se-name" placeholder="z. B. Familie Müller">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="se-directions">Wegbeschreibung (optional)</label>
+          <input type="text" id="se-directions" placeholder="z. B. Hinterhof, 2. Eingang">
+        </div>
+      </div>
+      <div id="se-categories-group" class="form-group" style="display:none">
+        <label>Kategorien</label>
+        <div id="se-categories-list" class="checkbox-group"></div>
+      </div>
+      <div class="karte-dialog-actions">
+        <button type="button" class="btn btn-secondary"
+                onclick="document.getElementById('stand-edit-popup').close()">Abbrechen</button>
+        <button type="submit" class="btn btn-primary" id="se-submit-btn">Speichern</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<script>
+const MARKET_ID_FOR_EDIT = <%= market.id %>;
+
+async function openStandEditPopup() {
+  var code = document.getElementById('stand-edit-code-input').value.trim();
+  var errBox = document.getElementById('stand-code-error');
+  errBox.style.display = 'none';
+  if (!code) { errBox.textContent = 'Bitte einen Code eingeben.'; errBox.style.display = ''; return; }
+
+  var res = await fetch('/markt/' + MARKET_ID_FOR_EDIT + '/stand-code-json', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ edit_code: code })
+  });
+  var data = await res.json();
+  if (!data.ok) { errBox.textContent = data.error; errBox.style.display = ''; return; }
+
+  // Felder befüllen
+  var s = data.stand;
+  var addrParts = (s.address || '').split(',');
+  var streetPart = (addrParts[0] || '').trim();
+  var zipPart = (addrParts[1] || '').trim();
+  var streetWords = streetPart.split(' ');
+  var houseVal = streetWords.pop() || '';
+  var streetVal = streetWords.join(' ');
+
+  document.getElementById('se-stand-id').value = s.id;
+  document.getElementById('se-code').value = s.edit_code;
+  document.getElementById('se-street').value = streetVal;
+  document.getElementById('se-housenumber').value = houseVal;
+  document.getElementById('se-zip').value = zipPart;
+  document.getElementById('se-name').value = s.name || '';
+  document.getElementById('se-directions').value = s.directions || '';
+
+  // Kategorien aufbauen
+  var catGroup = document.getElementById('se-categories-group');
+  var catList = document.getElementById('se-categories-list');
+  catList.innerHTML = '';
+  var allCats = data.marketCategories || [];
+  if (allCats.length > 0) {
+    allCats.forEach(function(cat) {
+      var lbl = document.createElement('label');
+      lbl.className = 'checkbox-label';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.name = 'categories'; cb.value = cat;
+      cb.checked = s.categories.includes(cat);
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(' ' + cat));
+      catList.appendChild(lbl);
+    });
+    catGroup.style.display = '';
+  } else {
+    catGroup.style.display = 'none';
+  }
+
+  // Fehler/Erfolg zurücksetzen
+  document.getElementById('stand-edit-error').style.display = 'none';
+  document.getElementById('stand-edit-success').style.display = 'none';
+  document.getElementById('stand-edit-popup').showModal();
+}
+
+async function submitStandEdit(e) {
+  e.preventDefault();
+  var btn = document.getElementById('se-submit-btn');
+  btn.disabled = true; btn.textContent = 'Speichern...';
+
+  var standId = document.getElementById('se-stand-id').value;
+  var code    = document.getElementById('se-code').value;
+  var categories = Array.from(document.querySelectorAll('#se-categories-list input[type=checkbox]:checked'))
+                        .map(function(cb) { return cb.value; });
+
+  var body = {
+    code: code,
+    street: document.getElementById('se-street').value,
+    housenumber: document.getElementById('se-housenumber').value,
+    zip: document.getElementById('se-zip').value,
+    name: document.getElementById('se-name').value,
+    directions: document.getElementById('se-directions').value,
+    categories: categories
+  };
+
+  var res = await fetch('/markt/' + MARKET_ID_FOR_EDIT + '/stand-bearbeiten-json/' + standId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  var data = await res.json();
+
+  btn.disabled = false; btn.textContent = 'Speichern';
+
+  if (!data.ok) {
+    var errBox = document.getElementById('stand-edit-error');
+    errBox.textContent = data.error;
+    errBox.style.display = '';
+  } else {
+    // Popup schließen und Erfolgsmeldung auf der Seite zeigen
+    document.getElementById('stand-edit-popup').close();
+    // Kleines grünes Banner einblenden
+    var banner = document.createElement('div');
+    banner.className = 'alert alert-success';
+    banner.textContent = data.message;
+    banner.style.cssText = 'position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);z-index:9999;min-width:280px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.15)';
+    document.body.appendChild(banner);
+    setTimeout(function() { banner.remove(); }, 3500);
+  }
+}
+</script>
 
 <%- include('partials/footer') %>
 

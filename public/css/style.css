@@ -1101,3 +1101,20 @@ img {
   font-size: 0.875rem;
   margin: 0;
 }
+
+/* ============================================
+   Stand-Bearbeitungs-Popup
+   ============================================ */
+.stand-edit-dialog {
+  max-width: 560px;
+}
+
+/* Code-Eingabefeld: gleiche Höhe wie Kategorien-Eingabe */
+.stand-code-row input[type="text"] {
+  height: 42px;
+  padding: 0 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  flex: 1;
+}

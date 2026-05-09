@@ -637,5 +637,84 @@ router.post('/markt/:id/stand-bearbeiten/:standId', async (req, res) => {
   res.redirect(`/markt/${marketId}/stand-bearbeiten/${standId}?code=${encodeURIComponent(code)}`);
 });
 
+/**
+ * POST /markt/:id/stand-code-json
+ * Prüft den Code und gibt Stand-Daten als JSON zurück (für AJAX-Popup).
+ */
+router.post('/markt/:id/stand-code-json', (req, res) => {
+  const marketId = parseInt(req.params.id);
+  const { edit_code } = req.body;
+  if (!edit_code || !edit_code.trim()) {
+    return res.json({ ok: false, error: 'Bitte einen Bearbeitungscode eingeben.' });
+  }
+  const stand = db.prepare(
+    'SELECT * FROM stands WHERE market_id = ? AND UPPER(edit_code) = UPPER(?)'
+  ).get(marketId, edit_code.trim());
+  if (!stand) {
+    return res.json({ ok: false, error: 'Ungültiger Code. Bitte prüfen Sie Ihre Eingabe.' });
+  }
+  const market = db.prepare('SELECT categories FROM markets WHERE id = ?').get(marketId);
+  return res.json({
+    ok: true,
+    stand: {
+      id: stand.id,
+      address: stand.address || '',
+      name: stand.name || '',
+      directions: stand.directions || '',
+      categories: JSON.parse(stand.categories || '[]'),
+      edit_code: stand.edit_code
+    },
+    marketCategories: JSON.parse((market && market.categories) || '[]')
+  });
+});
+
+/**
+ * POST /markt/:id/stand-bearbeiten-json/:standId
+ * Speichert Änderungen und antwortet mit JSON (für AJAX-Popup).
+ */
+router.post('/markt/:id/stand-bearbeiten-json/:standId', async (req, res) => {
+  const marketId = parseInt(req.params.id);
+  const standId  = parseInt(req.params.standId);
+  const { code, name, directions, street, housenumber, zip } = req.body;
+  let selectedCategories = req.body.categories || [];
+  if (typeof selectedCategories === 'string') selectedCategories = [selectedCategories];
+
+  const stand = db.prepare('SELECT * FROM stands WHERE id = ? AND market_id = ?').get(standId, marketId);
+  if (!stand || stand.edit_code.toUpperCase() !== (code || '').toUpperCase()) {
+    return res.json({ ok: false, error: 'Ungültiger Code.' });
+  }
+
+  let newAddress = stand.address;
+  let newLat = stand.latitude;
+  let newLon = stand.longitude;
+
+  if (street && housenumber && zip) {
+    const fullAddress = `${street.trim()} ${housenumber.trim()}, ${zip.trim()}`;
+    if (fullAddress !== stand.address) {
+      let coords;
+      try { coords = await geocodeAddress({ street: street.trim(), housenumber: housenumber.trim(), zip: zip.trim(), city: '' }); }
+      catch (e) { coords = null; }
+      if (!coords) {
+        return res.json({ ok: false, error: 'Die neue Adresse konnte nicht gefunden werden. Bitte prüfen Sie Ihre Eingabe.' });
+      }
+      const market = db.prepare('SELECT polygon FROM markets WHERE id = ?').get(marketId);
+      const polygon = JSON.parse((market && market.polygon) || '[]');
+      const isInside = polygon.length >= 3 ? pointInPolygon([coords.lat, coords.lon], polygon) : true;
+      if (!isInside) {
+        return res.json({ ok: false, error: 'Die neue Adresse liegt nicht im Geltungsbereich dieses Hofflohmarktes.' });
+      }
+      newAddress = fullAddress;
+      newLat = coords.lat;
+      newLon = coords.lon;
+    }
+  }
+
+  db.prepare(`
+    UPDATE stands SET name = ?, directions = ?, categories = ?, address = ?, latitude = ?, longitude = ? WHERE id = ?
+  `).run((name || '').trim(), (directions || '').trim(), JSON.stringify(selectedCategories), newAddress, newLat, newLon, stand.id);
+
+  return res.json({ ok: true, message: 'Ihr Stand wurde erfolgreich aktualisiert!' });
+});
+
 module.exports = router;
 module.exports.geocodeAddress = geocodeAddress;
