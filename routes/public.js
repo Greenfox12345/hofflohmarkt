@@ -77,7 +77,7 @@ async function geocodeAddress({ street, housenumber, zip, city = '' }) {
     const fallbackQuery = city && city.trim()
       ? `${street} ${housenumber}, ${zip} ${city}`
       : `${street} ${housenumber}, ${zip}`;
-    const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&countrycodes=de&limit=1`;
+    const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&countrycodes=de&limit=1&addressdetails=1`;
     const fallbackResponse = await fetch(fallbackUrl, {
       headers: {
         'User-Agent': 'HofflohmarktApp/1.0 (Hofflohmarkt-Organisationstool)'
@@ -86,15 +86,21 @@ async function geocodeAddress({ street, housenumber, zip, city = '' }) {
     if (!fallbackResponse.ok) return null;
     const fallbackData = await fallbackResponse.json();
     if (!fallbackData || fallbackData.length === 0) return null;
+    // Prüfen ob Nominatim wirklich eine Hausnummer gefunden hat
+    const fb = fallbackData[0];
+    if (!fb.address || !fb.address.house_number) return null;
     return {
-      lat: parseFloat(fallbackData[0].lat),
-      lon: parseFloat(fallbackData[0].lon)
+      lat: parseFloat(fb.lat),
+      lon: parseFloat(fb.lon)
     };
   }
-
+  // Prüfen ob Nominatim wirklich eine Hausnummer gefunden hat
+  // (bei falscher Hausnummer gibt Nominatim die Straße zurück, addresstype = 'road')
+  const result = data[0];
+  if (!result.address || !result.address.house_number) return null;
   return {
-    lat: parseFloat(data[0].lat),
-    lon: parseFloat(data[0].lon)
+    lat: parseFloat(result.lat),
+    lon: parseFloat(result.lon)
   };
 }
 
