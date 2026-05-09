@@ -89,10 +89,22 @@
   </div>
 </dialog>
 <script>
-// Zentriertes Popup öffnen sobald Seite geladen ist
 document.addEventListener('DOMContentLoaded', function() {
+  // Zentriertes Code-Popup öffnen (nach Standanmeldung)
   var popup = document.getElementById('code-popup');
   if (popup) popup.showModal();
+
+  // Erfolgsmeldung nach Stand-Bearbeitung (via sessionStorage nach Reload)
+  var successMsg = sessionStorage.getItem('standEditSuccess');
+  if (successMsg) {
+    sessionStorage.removeItem('standEditSuccess');
+    var banner = document.createElement('div');
+    banner.className = 'alert alert-success';
+    banner.textContent = successMsg;
+    banner.style.cssText = 'position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);z-index:9999;min-width:280px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.15);padding:0.75rem 1.5rem;border-radius:8px';
+    document.body.appendChild(banner);
+    setTimeout(function() { banner.remove(); }, 3500);
+  }
 });
 function copyCode(code) {
   navigator.clipboard.writeText(code).then(function() {
@@ -433,15 +445,10 @@ async function submitStandEdit(e) {
     errBox.textContent = data.error;
     errBox.style.display = '';
   } else {
-    // Popup schließen und Erfolgsmeldung auf der Seite zeigen
-    document.getElementById('stand-edit-popup').close();
-    // Kleines grünes Banner einblenden
-    var banner = document.createElement('div');
-    banner.className = 'alert alert-success';
-    banner.textContent = data.message;
-    banner.style.cssText = 'position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);z-index:9999;min-width:280px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.15)';
-    document.body.appendChild(banner);
-    setTimeout(function() { banner.remove(); }, 3500);
+    // Seite neu laden – Karte, Tabelle und alle Daten werden aktualisiert
+    // Erfolgsmeldung über sessionStorage an die neu geladene Seite übergeben
+    sessionStorage.setItem('standEditSuccess', data.message);
+    location.reload();
   }
 }
 </script>
