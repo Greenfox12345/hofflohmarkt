@@ -724,3 +724,4 @@ router.post('/markt/:id/stand-bearbeiten-json/:standId', async (req, res) => {
 
 module.exports = router;
 module.exports.geocodeAddress = geocodeAddress;
+module.exports.pointInPolygon = pointInPolygon;

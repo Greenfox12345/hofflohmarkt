@@ -7,11 +7,36 @@
     <a href="/admin/markets" class="btn btn-secondary">&larr; Zurück zur Marktübersicht</a>
   </div>
 
-  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
-    <div class="alert alert-success"><%= successMessage %></div>
-  <% } %>
-  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-    <div class="alert alert-error"><%= errorMessage %></div>
+  <%# Meldungen werden bereits im partials/header.ejs über res.locals angezeigt %>
+  <%# Hier nur den Bestätigungs-Dialog für Außerhalb-Adressen anzeigen %>
+
+  <% if (typeof outsideWarningPending !== 'undefined' && outsideWarningPending && outsideWarning) { %>
+    <div class="alert alert-warning" style="border-left: 4px solid #f59e0b; background: #fffbeb;">
+      <strong>⚠️ Adresse außerhalb des Marktgebiets</strong><br>
+      Die Adresse <strong><%= outsideWarning.fullAddress %></strong> liegt außerhalb des eingezeichneten Marktgebiets.
+      Soll der Stand trotzdem eingetragen werden?
+      <form action="/admin/markets/<%= market.id %>/stands/add" method="POST"
+            style="display:inline; margin-left: 1rem;">
+        <input type="hidden" name="street" value="">
+        <input type="hidden" name="housenumber" value="">
+        <input type="hidden" name="zip" value="">
+        <input type="hidden" name="name" value="<%= outsideWarning.name %>">
+        <input type="hidden" name="directions" value="<%= outsideWarning.directions %>">
+        <input type="hidden" name="force" value="yes">
+        <input type="hidden" name="force_address" value="<%= outsideWarning.fullAddress %>">
+        <input type="hidden" name="force_lat" value="<%= outsideWarning.lat %>">
+        <input type="hidden" name="force_lon" value="<%= outsideWarning.lon %>">
+        <% (outsideWarning.categories || []).forEach(cat => { %>
+          <input type="hidden" name="categories" value="<%= cat %>">
+        <% }) %>
+        <button type="submit" class="btn btn-small btn-warning" style="background:#f59e0b;color:#fff;border:none;">
+          Ja, trotzdem eintragen
+        </button>
+      </form>
+      <form action="/admin/markets/<%= market.id %>/stands" method="GET" style="display:inline; margin-left:0.5rem;">
+        <button type="submit" class="btn btn-small btn-secondary">Abbrechen</button>
+      </form>
+    </div>
   <% } %>
 
   <!-- Stand hinzufügen -->
@@ -187,4 +212,4 @@ function toggleEdit(id) {
 }
 </script>
 
-<%- include('../partials/footer') %> %>
+<%- include('../partials/footer') %>

@@ -485,15 +485,21 @@ router.get('/markets/:id/stands', (req, res) => {
     createdFormatted: formatDate(s.created_at)
   }));
 
+  const outsideWarningPending = req.session.outsideWarningPending || false;
+  const outsideWarning = req.session.outsideWarning || null;
   res.render('admin/stands', {
     title: `Stände – ${market.name}`,
     market: { ...market, categoriesParsed: JSON.parse(market.categories || '[]') },
     stands: standsFormatted,
     successMessage: req.session.successMessage || null,
-    errorMessage:   req.session.errorMessage   || null
+    errorMessage:   req.session.errorMessage   || null,
+    outsideWarningPending,
+    outsideWarning
   });
   req.session.successMessage = null;
   req.session.errorMessage   = null;
+  req.session.outsideWarningPending = null;
+  req.session.outsideWarning = null;
 });
 
 /// Stand hinzufügen (Admin)
@@ -508,6 +514,23 @@ router.post('/markets/:marketId/stands/add', async (req, res) => {
   let selectedCategories = req.body.categories || [];
   if (typeof selectedCategories === 'string') selectedCategories = [selectedCategories];
 
+  // Bei force=yes: Vorberechnete Daten aus dem Bestätigungsformular verwenden
+  if (req.body.force === 'yes' && req.body.force_address && req.body.force_lat && req.body.force_lon) {
+    const forcedAddress = req.body.force_address;
+    const forcedLat = parseFloat(req.body.force_lat);
+    const forcedLon = parseFloat(req.body.force_lon);
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    db.prepare(`
+      INSERT INTO stands (market_id, address, latitude, longitude, categories, name, directions, edit_code)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(marketId, forcedAddress, forcedLat, forcedLon,
+      JSON.stringify(selectedCategories), (name || '').trim(), (directions || '').trim(), code);
+    req.session.successMessage = `Stand "${forcedAddress}" wurde hinzugefügt (außerhalb des Marktgebiets). Bearbeitungscode: ${code}`;
+    return res.redirect(`/admin/markets/${marketId}/stands`);
+  }
+
   if (!street || !housenumber) {
     req.session.errorMessage = 'Bitte Straße und Hausnummer ausfüllen.';
     return res.redirect(`/admin/markets/${marketId}/stands`);
@@ -515,15 +538,34 @@ router.post('/markets/:marketId/stands/add', async (req, res) => {
   const fullAddress = zip ? `${street} ${housenumber}, ${zip}` : `${street} ${housenumber}`;
 
   // Geocoding
-  const { geocodeAddress } = require('./public');
+  const { geocodeAddress, pointInPolygon } = require('./public');
   let coords;
-  try { coords = await geocodeAddress({ street, housenumber, zip, city: '' }); }
+  try { coords = await geocodeAddress({ street, housenumber, zip: zip || '', city: '' }); }
   catch (e) { coords = null; }
   if (!coords) {
-    req.session.errorMessage = 'Adresse konnte nicht gefunden werden.';
+    req.session.errorMessage = 'Adresse konnte nicht gefunden werden. Bitte prüfen Sie Straße und Hausnummer.';
     return res.redirect(`/admin/markets/${marketId}/stands`);
   }
-
+  // Polygon-Prüfung (nur wenn force nicht gesetzt)
+  if (req.body.force !== 'yes') {
+    const polygon = JSON.parse(market.polygon || '[]');
+    const isInside = polygon.length >= 3 ? pointInPolygon([coords.lat, coords.lon], polygon) : true;
+    if (!isInside) {
+      // Koordinaten und Adresse in Session speichern für force-Formular
+      req.session.outsideWarning = {
+        marketId,
+        fullAddress,
+        lat: coords.lat,
+        lon: coords.lon,
+        name: (name || '').trim(),
+        directions: (directions || '').trim(),
+        categories: selectedCategories
+      };
+      req.session.errorMessage = `⚠️ Die Adresse "${fullAddress}" liegt außerhalb des Marktgebiets. Soll der Stand trotzdem eingetragen werden?`;
+      req.session.outsideWarningPending = true;
+      return res.redirect(`/admin/markets/${marketId}/stands`);
+    }
+  }
   // 6-stelligen Bearbeitungscode generieren
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
