@@ -508,11 +508,11 @@ router.post('/markets/:marketId/stands/add', async (req, res) => {
   let selectedCategories = req.body.categories || [];
   if (typeof selectedCategories === 'string') selectedCategories = [selectedCategories];
 
-  if (!street || !housenumber || !zip) {
-    req.session.errorMessage = 'Bitte Straße, Hausnummer und PLZ ausfüllen.';
+  if (!street || !housenumber) {
+    req.session.errorMessage = 'Bitte Straße und Hausnummer ausfüllen.';
     return res.redirect(`/admin/markets/${marketId}/stands`);
   }
-  const fullAddress = `${street} ${housenumber}, ${zip}`;
+  const fullAddress = zip ? `${street} ${housenumber}, ${zip}` : `${street} ${housenumber}`;
 
   // Geocoding
   const { geocodeAddress } = require('./public');
@@ -555,13 +555,14 @@ router.post('/markets/:marketId/stands/:standId/edit', async (req, res) => {
   let newLat = stand.latitude;
   let newLon = stand.longitude;
 
-  // Adresse neu geocodieren wenn Felder ausgefüllt
-  if (street && housenumber && zip) {
-    const fullAddress = `${street.trim()} ${housenumber.trim()}, ${zip.trim()}`;
+  // Adresse neu geocodieren wenn Felder ausgefüllt (PLZ optional)
+  if (street && housenumber) {
+    const zipTrimmed = (zip || '').trim();
+    const fullAddress = zipTrimmed ? `${street.trim()} ${housenumber.trim()}, ${zipTrimmed}` : `${street.trim()} ${housenumber.trim()}`;
     if (fullAddress !== stand.address) {
       const { geocodeAddress } = require('./public');
       let coords;
-      try { coords = await geocodeAddress({ street: street.trim(), housenumber: housenumber.trim(), zip: zip.trim(), city: '' }); }
+      try { coords = await geocodeAddress({ street: street.trim(), housenumber: housenumber.trim(), zip: zipTrimmed, city: '' }); }
       catch (e) { coords = null; }
       if (!coords) {
         req.session.errorMessage = 'Neue Adresse konnte nicht gefunden werden. Andere Felder wurden gespeichert.';
